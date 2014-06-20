@@ -1,6 +1,6 @@
 /* TPC-C Load program, adopted from TPC-C Specification version 5.11 */
 
-/ *==================================================================+
+/*==================================================================+
  | Load TPCC tables
  +==================================================================*/
 
@@ -11,7 +11,7 @@
 
 extern long count_ware;
 
-/ * Functions */
+/* Functions */
 
 long NURand();
 void LoadItems();
@@ -28,17 +28,17 @@ void MakeAddress();
 void Error();
 void Lastname();
 
-/ * Global SQL Variables */
+/* Global SQL Variables */
 EXEC SQL BEGIN DECLARE SECTION;
  char timestamp[20];
  long count_ware;
 EXEC SQL END DECLARE SECTION;
 
-/ * Global Variables */
+/* Global Variables */
  int i;
- int option_debug = 0; / * 1 if generating debug output */
+ int option_debug = 0; /* 1 if generating debug output */
 
-/ *==================================================================+
+/*==================================================================+
  | main()
  | ARGUMENTS
  | Warehouses n [Debug] [Help]
@@ -59,7 +59,7 @@ EXEC SQL WHENEVER SQLERROR GOTO Error_SqlCall;
  arg[0] = toupper(arg[0]);
 
  switch (arg[0]) {
- case 'W': / * Warehouses */
+ case 'W': /* Warehouses */
  if (count_ware)
  {
  printf("Error - Warehouses specified more than once.\ n");
@@ -82,8 +82,8 @@ EXEC SQL WHENEVER SQLERROR GOTO Error_SqlCall;
  }
  break;
 
-/ ******* Generic Args *********************/
- case 'D': / * Debug Option */
+/******* Generic Args *********************/
+ case 'D': /* Debug Option */
  if (option_debug)
  {
  printf("Error - Debug option specified more than once\ n");
@@ -92,7 +92,7 @@ EXEC SQL WHENEVER SQLERROR GOTO Error_SqlCall;
  option_debug=1;
  break;
 
- case 'H': / * List Args */
+ case 'H': /* List Args */
  printf("Usage - Warehouses n [Debug] [Help]\ n");
  exit(0);
  break;
@@ -111,7 +111,7 @@ EXEC SQL WHENEVER SQLERROR GOTO Error_SqlCall;
  }
 
  SetSeed( time( 0 ) );
- / * Initialize timestamp (for date columns) */
+ /* Initialize timestamp (for date columns) */
  gettimestamp(timestamp);
  printf( "TPCC Data Load Started...\ n" );
  LoadItems();
@@ -125,7 +125,7 @@ Error_SqlCall:
  Error();
 }
 
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | LoadItems
  | DESCRIPTION
@@ -158,7 +158,7 @@ void LoadItems()
  }
  for (i_id=1; i_id<=MAXITEMS; i_id++) {
 
- / * Generate Item Data */
+ /* Generate Item Data */
  MakeAlphaString( 14, 24, i_name);
  i_price=((float) RandomNumber(100L,10000L))/ 100.0;
  idatasiz=MakeAlphaString(26,50,i_data);
@@ -193,7 +193,7 @@ void LoadItems()
 sqlerr:
  Error();
 }
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | LoadWare
  | DESCRIPTION
@@ -219,7 +219,7 @@ void LoadWare()
  printf("Loading Warehouse \ n");
  for (w_id=1L; w_id<=count_ware; w_id++) {
 
- / * Generate Warehouse Data */
+ /* Generate Warehouse Data */
  MakeAlphaString( 6, 10, w_name);
  MakeAddress( w_street_1, w_street_2, w_city, w_state, w_zip );
  w_tax=((float)RandomNumber(10L,20L))/ 100.0;
@@ -235,7 +235,7 @@ void LoadWare()
  values (:w_id, :w_name,
  :w_street_1, :w_street_2, :w_city, :w_state,
  :w_zip, :w_tax, :w_ytd);
- / ** Make Rows associated with Warehouse **/
+ /** Make Rows associated with Warehouse **/
  Stock(w_id);
  District(w_id);
  EXEC SQL COMMIT WORK;
@@ -244,7 +244,7 @@ void LoadWare()
 sqlerr:
  Error();
 }
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | LoadCust
  | DESCRIPTION
@@ -263,12 +263,12 @@ void LoadCust()
  for (d_id=1L; d_id<=DIST_PER_WARE; d_id++)
  Customer(d_id,w_id);
 
- EXEC SQL COMMIT WORK; / * Just in case */
+ EXEC SQL COMMIT WORK; /* Just in case */
  return;
 sqlerr:
  Error();
 }
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | LoadOrd
  | DESCRIPTION
@@ -289,12 +289,12 @@ void LoadOrd()
  for (d_id=1L; d_id<=DIST_PER_WARE; d_id++)
  Orders(d_id, w_id);
 
- EXEC SQL COMMIT WORK; / * Just in case */
+ EXEC SQL COMMIT WORK; /* Just in case */
  return;
 sqlerr:
  Error();
 }
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | Stock
  | DESCRIPTION
@@ -341,7 +341,7 @@ void Stock(w_id)
 
  for (s_i_id=1; s_i_id<=MAXITEMS; s_i_id++) {
 
- / * Generate Stock Data */
+ /* Generate Stock Data */
  s_quantity=RandomNumber(10L,100L);
  MakeAlphaString(24,24,s_dist_01);
  MakeAlphaString(24,24,s_dist_02);
@@ -392,7 +392,7 @@ sqlerr:
  Error();
 }
 
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | District
  | DESCRIPTION
@@ -426,7 +426,7 @@ void District(w_id)
  d_next_o_id=3001L;
  for (d_id=1; d_id<=DIST_PER_WARE; d_id++) {
 
- / * Generate District Data */
+ /* Generate District Data */
  MakeAlphaString(6L,10L,d_name);
  MakeAddress( d_street_1, d_street_2, d_city, d_state, d_zip );
  d_tax=((float)RandomNumber(10L,20L))/ 100.0;
@@ -451,7 +451,7 @@ sqlerr:
  Error();
 }
 
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | Customer
  | DESCRIPTION
@@ -495,7 +495,7 @@ void Customer( d_id, w_id )
 
  for (c_id=1; c_id<=CUST_PER_DIST; c_id++) {
 
- / * Generate Customer Data */
+ /* Generate Customer Data */
  c_d_id=d_id;
  c_w_id=w_id;
  MakeAlphaString( 8, 16, c_first );
@@ -554,7 +554,7 @@ sqlerr:
  Error();
 }
 
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | Orders
  | DESCRIPTION
@@ -589,15 +589,15 @@ void Orders(d_id, w_id)
  printf("Loading Orders for D=%ld, W= %ld\ n", d_id, w_id);
  o_d_id=d_id;
  o_w_id=w_id;
- InitPermutation(); / * initialize permutation of customer numbers */
+ InitPermutation(); /* initialize permutation of customer numbers */
  for (o_id=1; o_id<=ORD_PER_DIST; o_id++) {
 
- / * Generate Order Data */
+ /* Generate Order Data */
  o_c_id=GetPermutation();
  o_carrier_id=RandomNumber(1L,10L);
  o_ol_cnt=RandomNumber(5L,15L);
 
- if (o_id > 2100) / * the last 900 orders have not been delivered) */
+ if (o_id > 2100) /* the last 900 orders have not been delivered) */
  {
  EXEC SQL INSERT INTO
  orders (o_id, o_c_id, o_d_id, o_w_id,
@@ -622,7 +622,7 @@ void Orders(d_id, w_id)
  o_id, o_c_id, o_d_id, o_w_id);
 
  for (ol=1; ol<=o_ol_cnt; ol++) {
- / * Generate Order Line Data */
+ /* Generate Order Line Data */
  ol_i_id=RandomNumber(1L,MAXITEMS);
  ol_supply_w_id=o_w_id;
  ol_quantity=5;
@@ -668,7 +668,7 @@ sqlerr:
  Error();
 }
 
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | MakeAddress()
  | DESCRIPTION
@@ -682,14 +682,14 @@ void MakeAddress(str1,str2,city,state,zip)
  char *state;
  char *zip;
 {
- MakeAlphaString(10,20,str1); / * Street 1*/
- MakeAlphaString(10,20,str2); / * Street 2*/
- MakeAlphaString(10,20,city); / * City */
- MakeAlphaString(2,2,state); / * State */
- MakeNumberString(9,9,zip); / * Zip */
+ MakeAlphaString(10,20,str1); /* Street 1*/
+ MakeAlphaString(10,20,str2); /* Street 2*/
+ MakeAlphaString(10,20,city); /* City */
+ MakeAlphaString(2,2,state); /* State */
+ MakeNumberString(9,9,zip); /* Zip */
 }
 
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | Error()
  | DESCRIPTION
@@ -706,7 +706,7 @@ void Error()
  exit( -1 );
 }
 
-/ *==================================================================+
+/*==================================================================+
  | ROUTINE NAME
  | Lastname
  | DESCRIPTION
