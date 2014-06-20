@@ -12,21 +12,20 @@
 extern long count_ware;
 
 /* Functions */
-
-long NURand();
-void LoadItems();
+long NURand();	/* TODO: Implement the NURand() function */
+void LoadItems(void);
 void LoadWare();
 void LoadCust();
 void LoadOrd();
-void LoadNewOrd();
-void Stock();
-void District();
-void Customer();
-void Orders();
-void New_Orders();
-void MakeAddress();
+void LoadNewOrd();	/* XXX: Not implemented here, neither used! */
+void Stock(long w_id);
+void District(long w_id);
+void Customer(long d_id, long w_id);
+void Orders(long d_id, int w_id);
+void New_Orders();	/* XXX: Not implemented here, neither used! */
+void MakeAddress(char *str1, char *str2, char *city, char *state, char *zip);
 void Error();
-void Lastname();
+void Lastname(int num, char *name);
 
 /* Global SQL Variables */
 EXEC SQL BEGIN DECLARE SECTION;
@@ -43,9 +42,7 @@ EXEC SQL END DECLARE SECTION;
  | ARGUMENTS
  | Warehouses n [Debug] [Help]
  +==================================================================*/
-void main( argc, argv )
- int argc;
- char * argv[];
+void main(int argc, char* argv[])
 {
  char arg[2];
 
@@ -302,8 +299,7 @@ sqlerr:
  | ARGUMENTS
  | w_id - warehouse id
  +==================================================================*/
-void Stock(w_id)
- long w_id;
+void Stock(long w_id)
 {
  EXEC SQL BEGIN DECLARE SECTION;
  long s_i_id;
@@ -400,8 +396,7 @@ sqlerr:
  | ARGUMENTS
  | w_id - warehouse id
  +==================================================================*/
-void District(w_id)
- long w_id;
+void District(long w_id)
 {
 
  EXEC SQL BEGIN DECLARE SECTION;
@@ -462,9 +457,7 @@ sqlerr:
  | d_id - district id
  | w_id - warehouse id
  +==================================================================*/
-void Customer( d_id, w_id )
- long d_id;
- long w_id;
+void Customer(long d_id, long w_id)
 {
  EXEC SQL BEGIN DECLARE SECTION;
  long c_id;
@@ -563,8 +556,7 @@ sqlerr:
  | ARGUMENTS
  | w_id - warehouse id
  +==================================================================*/
-void Orders(d_id, w_id)
- long d_id, w_id;
+void Orders(long d_id, int w_id)
 {
 
  EXEC SQL BEGIN DECLARE SECTION;
@@ -675,12 +667,7 @@ sqlerr:
  | Build an Address
  | ARGUMENTS
  +==================================================================*/
-void MakeAddress(str1,str2,city,state,zip)
- char *str1;
- char *str2;
- char *city;
- char *state;
- char *zip;
+void MakeAddress(char *str1, char *str2, char *city, char *state, char *zip)
 {
  MakeAlphaString(10,20,str1); /* Street 1*/
  MakeAlphaString(10,20,str2); /* Street 2*/
@@ -715,9 +702,7 @@ void Error()
  | num - non-uniform random number
  | name - last name string
  +==================================================================*/
-void Lastname(num, name)
- int num;
- char *name;
+void Lastname(int num, char *name)
 {
  int i;
  static char *n[] =
