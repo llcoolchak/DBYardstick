@@ -119,7 +119,9 @@ void main(int argc, char* argv[])
 	LoadWare();
 	LoadCust();
 	LoadOrd();
-	EXEC SQL COMMIT WORK RELEASE;
+
+	EXEC SQL COMMIT RELEASE;
+
 	printf("\n...DATA LOADING COMPLETED SUCCESSFULLY.\n");
 	exit(0);
 
