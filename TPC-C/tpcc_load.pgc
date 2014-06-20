@@ -44,82 +44,87 @@ EXEC SQL END DECLARE SECTION;
  +==================================================================*/
 void main(int argc, char* argv[])
 {
- char arg[2];
+	char arg[2];
 
-EXEC SQL WHENEVER SQLERROR GOTO Error_SqlCall;
+	EXEC SQL WHENEVER SQLERROR GOTO Error_SqlCall;
 
- count_ware=0;
+	count_ware = 0;
 
- for (i=1; i<argc; i++)
- {
- strncpy(arg,argv[i],2);
- arg[0] = toupper(arg[0]);
+	for (i = 1; i < argc; ++i)
+	{
+		strncpy(arg, argv[i], 2);
+		arg[0] = toupper(arg[0]);
 
- switch (arg[0]) {
- case 'W': /* Warehouses */
- if (count_ware)
- {
- printf("Error - Warehouses specified more than once.\ n");
- exit(-1);
- }
- if (argc-1>i)
- {
- i++;
- count_ware=atoi(argv[i]);
- if (count_ware<=0)
- {
- printf("Invalid Warehouse Count.\ n");
- exit(-1);
- }
- }
- else
- {
- printf("Error - Warehouse count must follow Warehouse keyword\ n");
- exit(-1);
- }
- break;
+		switch (arg[0])
+		{
+		case 'W': /* Warehouses */
+			if (count_ware)
+			{
+				printf("Error - Warehouses specified more than once.\n");
+				exit(-1);
+			}
+			if (argc-1>i)
+			{
+				i++;
+				count_ware=atoi(argv[i]);
+				if (count_ware<=0)
+				{
+					printf("Invalid Warehouse Count.\n");
+					exit(-1);
+					}
+			}
+			else
+			{
+				printf("Error - Warehouse count must follow Warehouse keyword\n");
+				exit(-1);
+			}
+			break;
 
-/******* Generic Args *********************/
- case 'D': /* Debug Option */
- if (option_debug)
- {
- printf("Error - Debug option specified more than once\ n");
- exit(-1);
- }
- option_debug=1;
- break;
+			/******* Generic Args *********************/
+		case 'D': /* Debug Option */
+			if (option_debug)
+			{
+				printf("Error - Debug option specified more than once\n");
+				exit(-1);
+			}
+			option_debug=1;
+			break;
 
- case 'H': /* List Args */
- printf("Usage - Warehouses n [Debug] [Help]\ n");
- exit(0);
- break;
+		case 'H': /* List Args */
+			printf("Usage - Warehouses n [Debug] [Help]\n");
+			exit(0);
+			break;
 
- default : printf("Error - Unknown Argument (%s)\ n",arg);
- printf("Usage - Warehouses n [Debug] [Help]\ n");
- exit(-1);
- }
- }
+		default : printf("Error - Unknown Argument (%s)\n",arg);
+			printf("Usage - Warehouses n [Debug] [Help]\n");
+			exit(-1);
+			break;
+		}
+	}
 
- if (!(count_ware)) {
- printf("Not enough arguments.\ n");
- printf("Usage - Warehouses n ");
- printf(" [Debug] [Help]\ n");
- exit(-1);
- }
+	if (!(count_ware))
+	{
+		printf("Not enough arguments.\n");
+		printf("Usage - Warehouses n ");
+		printf(" [Debug] [Help]\n");
+		exit(-1);
+	}
 
- SetSeed( time( 0 ) );
- /* Initialize timestamp (for date columns) */
- gettimestamp(timestamp);
- printf( "TPCC Data Load Started...\ n" );
- LoadItems();
- LoadWare();
- LoadCust();
- LoadOrd();
- EXEC SQL COMMIT WORK RELEASE;
- printf( "\ n...DATA LOADING COMPLETED SUCCESSFULLY.\ n" );
- exit( 0 );
+	SetSeed(time(0));
+
+	/* Initialize timestamp (for date columns) */
+	gettimestamp(timestamp);
+	printf("TPCC Data Load Started...\n");
+	LoadItems();
+	LoadWare();
+	LoadCust();
+	LoadOrd();
+	EXEC SQL COMMIT WORK RELEASE;
+	printf("\n...DATA LOADING COMPLETED SUCCESSFULLY.\n");
+	exit(0);
+
 Error_SqlCall:
- Error();
+	Error();
 }
 
 /*==================================================================+
@@ -132,64 +137,83 @@ Error_SqlCall:
  +==================================================================*/
 void LoadItems()
 {
- EXEC SQL BEGIN DECLARE SECTION;
- long i_id;
- char i_name[24];
- float i_price;
- char i_data[50];
- EXEC SQL END DECLARE SECTION;
- int idatasiz;
- int orig[MAXITEMS];
- long pos;
- int i;
- EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
- printf("Loading Item \ n");
- for (i=0; i<MAXITEMS/ 10; i++) orig[i]=0;
- for (i=0; i<MAXITEMS/ 10; i++)
- {
- do
- {
- pos = RandomNumber(0L,MAXITEMS);
- } while (orig[pos]);
- orig[pos] = 1;
- }
- for (i_id=1; i_id<=MAXITEMS; i_id++) {
+	EXEC SQL BEGIN DECLARE SECTION;
+	long i_id;
+	char i_name[24];
+	float i_price;
+	char i_data[50];
+	EXEC SQL END DECLARE SECTION;
 
- /* Generate Item Data */
- MakeAlphaString( 14, 24, i_name);
- i_price=((float) RandomNumber(100L,10000L))/ 100.0;
- idatasiz=MakeAlphaString(26,50,i_data);
- if (orig[i_id])
- {
- pos = RandomNumber(0L,idatasiz-8);
- i_data[pos]='o';
- i_data[pos+1]='r';
- i_data[pos+2]='i';
- i_data[pos+3]='g';
- i_data[pos+4]='i';
- i_data[pos+5]='n';
- i_data[pos+6]='a';
- i_data[pos+7]='l';
- }
+	int idatasiz;
+	int orig[MAXITEMS];
+	long pos;
+	int i;
 
- if ( option_debug )
- printf( "IID = %ld, Name= %16s, Price = %5.2f\ n",
- i_id, i_name, i_price );
- EXEC SQL INSERT INTO
- item (i_id, i_name, i_price, i_data)
- values (:i_id, :i_name, :i_price, :i_data);
- if ( !(i_id % 100) ) {
- printf(".");
- EXEC SQL COMMIT WORK;
- if ( !(i_id % 5000) ) printf(" %ld\ n",i_id);
- }
- }
- EXEC SQL COMMIT WORK;
- printf("Item Done. \ n");
- return;
+	EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+
+	printf("Loading Item \n");
+	for (i=0; i<MAXITEMS/ 10; i++)
+		orig[i] = 0;
+
+	for (i = 0; i < MAXITEMS/10; ++i)
+	{
+		do
+		{
+			pos = RandomNumber(0L, MAXITEMS);
+
+		} while (orig[pos]);
+
+		orig[pos] = 1;
+	}
+
+	for (i_id = 1; i_id <= MAXITEMS; ++i_id)
+	{
+		/* Generate Item Data */
+		MakeAlphaString(14, 24, i_name);
+
+		i_price = ((float) RandomNumber(100L, 10000L)) / 100.0;
+		idatasiz = MakeAlphaString(26, 50, i_data);
+
+		if (orig[i_id])
+		{
+			pos = RandomNumber(0L,idatasiz-8);
+			i_data[pos]		= 'O';
+			i_data[pos+1]	= 'R';
+			i_data[pos+2]	= 'I';
+			i_data[pos+3]	= 'G';
+			i_data[pos+4]	= 'I';
+			i_data[pos+5]	= 'N';
+			i_data[pos+6]	= 'A';
+			i_data[pos+7]	= 'L';
+		}
+
+		if (option_debug)
+			printf("IID = %ld, Name= %16s, Price = %5.2f\n", i_id, i_name, i_price);
+
+		EXEC SQL INSERT INTO
+			item (i_id, i_name, i_price, i_data)
+			values (:i_id, :i_name, :i_price, :i_data);
+
+		if (!(i_id % 100))
+		{
+			printf(".");
+
+			EXEC SQL COMMIT WORK;
+
+			if (!(i_id % 5000))
+				printf(" %ld\n",i_id);
+		}
+	}
+
+	EXEC SQL COMMIT WORK;
+
+	printf("Item Done. \n");
+	return;
+
 sqlerr:
- Error();
+	Error();
 }
+
 /*==================================================================+
  | ROUTINE NAME
  | LoadWare
@@ -201,46 +225,54 @@ sqlerr:
  +==================================================================*/
 void LoadWare()
 {
- EXEC SQL BEGIN DECLARE SECTION;
- long w_id;
- char w_name[10];
- char w_street_1[20];
- char w_street_2[20];
- char w_city[20];
- char w_state[2];
- char w_zip[9];
- float w_tax;
- float w_ytd;
- EXEC SQL END DECLARE SECTION;
- EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
- printf("Loading Warehouse \ n");
- for (w_id=1L; w_id<=count_ware; w_id++) {
+	EXEC SQL BEGIN DECLARE SECTION;
+	long w_id;
+	char w_name[10];
+	char w_street_1[20];
+	char w_street_2[20];
+	char w_city[20];
+	char w_state[2];
+	char w_zip[9];
+	float w_tax;
+	float w_ytd;
+	EXEC SQL END DECLARE SECTION;
 
- /* Generate Warehouse Data */
- MakeAlphaString( 6, 10, w_name);
- MakeAddress( w_street_1, w_street_2, w_city, w_state, w_zip );
- w_tax=((float)RandomNumber(10L,20L))/ 100.0;
- w_ytd=3000000.00;
+	EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
 
- if ( option_debug )
- printf( "WID = %ld, Name= %16s, Tax = %5.2f\ n",
- w_id, w_name, w_tax );
- EXEC SQL INSERT INTO
- warehouse (w_id, w_name,
- w_street_1, w_street_2, w_city, w_state, w_zip,
- w_tax, w_ytd)
- values (:w_id, :w_name,
- :w_street_1, :w_street_2, :w_city, :w_state,
- :w_zip, :w_tax, :w_ytd);
- /** Make Rows associated with Warehouse **/
- Stock(w_id);
- District(w_id);
- EXEC SQL COMMIT WORK;
- }
- return;
+	printf("Loading Warehouse \n");
+
+	for (w_id = 1L; w_id <= count_ware; ++w_id)
+	{
+		/* Generate Warehouse Data */
+		MakeAlphaString(6, 10, w_name);
+		MakeAddress(w_street_1, w_street_2, w_city, w_state, w_zip);
+		w_tax = ((float)RandomNumber(10L,20L)) / 100.0;
+		w_ytd = 3000000.00;
+
+		if (option_debug)
+			printf("WID = %ld, Name= %16s, Tax = %5.2f\n", w_id, w_name, w_tax);
+
+		EXEC SQL INSERT INTO
+			warehouse (w_id, w_name,
+						w_street_1, w_street_2, w_city, w_state, w_zip,
+						w_tax, w_ytd)
+			values (:w_id, :w_name,
+					:w_street_1, :w_street_2, :w_city, :w_state,
+					:w_zip, :w_tax, :w_ytd);
+
+		/** Make Rows associated with Warehouse **/
+		Stock(w_id);
+		District(w_id);
+
+		EXEC SQL COMMIT WORK;
+	}
+
+	return;
+
 sqlerr:
- Error();
+	Error();
 }
+
 /*==================================================================+
  | ROUTINE NAME
  | LoadCust
@@ -251,20 +283,26 @@ sqlerr:
  +==================================================================*/
 void LoadCust()
 {
- EXEC SQL BEGIN DECLARE SECTION;
- EXEC SQL END DECLARE SECTION;
- long w_id;
- long d_id;
- EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
- for (w_id=1L; w_id<=count_ware; w_id++)
- for (d_id=1L; d_id<=DIST_PER_WARE; d_id++)
- Customer(d_id,w_id);
+	EXEC SQL BEGIN DECLARE SECTION;
+	EXEC SQL END DECLARE SECTION;
 
- EXEC SQL COMMIT WORK; /* Just in case */
- return;
+	long w_id;
+	long d_id;
+
+	EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+
+	for (w_id = 1L; w_id <= count_ware; ++w_id)
+		for (d_id = 1L; d_id <= DIST_PER_WARE; ++d_id)
+			Customer(d_id, w_id);
+
+	EXEC SQL COMMIT WORK; /* Just in case */
+
+	return;
+
 sqlerr:
- Error();
+	Error();
 }
+
 /*==================================================================+
  | ROUTINE NAME
  | LoadOrd
@@ -275,22 +313,27 @@ sqlerr:
  +==================================================================*/
 void LoadOrd()
 {
- EXEC SQL BEGIN DECLARE SECTION;
- long w_id;
- float w_tax;
- long d_id;
- float d_tax;
- EXEC SQL END DECLARE SECTION;
- EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
- for (w_id=1L; w_id<=count_ware; w_id++)
- for (d_id=1L; d_id<=DIST_PER_WARE; d_id++)
- Orders(d_id, w_id);
+	EXEC SQL BEGIN DECLARE SECTION;
+	long w_id;
+	float w_tax;
+	long d_id;
+	float d_tax;
+	EXEC SQL END DECLARE SECTION;
 
- EXEC SQL COMMIT WORK; /* Just in case */
- return;
+	EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+
+	for (w_id = 1L; w_id <= count_ware; ++w_id)
+		for (d_id = 1L; d_id <= DIST_PER_WARE; ++d_id)
+			Orders(d_id, w_id);
+
+	EXEC SQL COMMIT WORK; /* Just in case */
+
+	return;
+
 sqlerr:
- Error();
+	Error();
 }
+
 /*==================================================================+
  | ROUTINE NAME
  | Stock
@@ -301,91 +344,107 @@ sqlerr:
  +==================================================================*/
 void Stock(long w_id)
 {
- EXEC SQL BEGIN DECLARE SECTION;
- long s_i_id;
- long s_w_id;
- long s_quantity;
- char s_dist_01[24];
- char s_dist_02[24];
- char s_dist_03[24];
- char s_dist_04[24];
- char s_dist_05[24];
- char s_dist_06[24];
- char s_dist_07[24];
- char s_dist_08[24];
- char s_dist_09[24];
- char s_dist_10[24];
- char s_data[50];
- EXEC SQL END DECLARE SECTION;
- int sdatasiz;
- long orig[MAXITEMS];
- long pos;
- int i;
- EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
- printf("Loading Stock Wid=%ld\ n",w_id);
- s_w_id=w_id;
+	EXEC SQL BEGIN DECLARE SECTION;
+	long s_i_id;
+	long s_w_id;
+	long s_quantity;
+	char s_dist_01[24];
+	char s_dist_02[24];
+	char s_dist_03[24];
+	char s_dist_04[24];
+	char s_dist_05[24];
+	char s_dist_06[24];
+	char s_dist_07[24];
+	char s_dist_08[24];
+	char s_dist_09[24];
+	char s_dist_10[24];
+	char s_data[50];
+	EXEC SQL END DECLARE SECTION;
 
- for (i=0; i<MAXITEMS/ 10; i++) orig[i]=0;
- for (i=0; i<MAXITEMS/ 10; i++)
- {
- do
- {
- pos=RandomNumber(0L,MAXITEMS);
- } while (orig[pos]);
- orig[pos] = 1;
- }
+	int sdatasiz;
+	long orig[MAXITEMS];
+	long pos;
+	int i;
 
- for (s_i_id=1; s_i_id<=MAXITEMS; s_i_id++) {
+	EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
 
- /* Generate Stock Data */
- s_quantity=RandomNumber(10L,100L);
- MakeAlphaString(24,24,s_dist_01);
- MakeAlphaString(24,24,s_dist_02);
- MakeAlphaString(24,24,s_dist_03);
- MakeAlphaString(24,24,s_dist_04);
- MakeAlphaString(24,24,s_dist_05);
- MakeAlphaString(24,24,s_dist_06);
- MakeAlphaString(24,24,s_dist_07);
- MakeAlphaString(24,24,s_dist_08);
- MakeAlphaString(24,24,s_dist_09);
- MakeAlphaString(24,24,s_dist_10);
- sdatasiz=MakeAlphaString(26,50,s_data);
- if (orig[s_i_id])
- {
- pos=RandomNumber(0L,sdatasiz-8);
- s_data[pos]='o';
- s_data[pos+1]='r';
- s_data[pos+2]='i';
- s_data[pos+3]='g';
- s_data[pos+4]='i';
- s_data[pos+5]='n';
- s_data[pos+6]='a';
- s_data[pos+7]='l';
- }
+	printf("Loading Stock Wid=%ld\n",w_id);
+	s_w_id=w_id;
 
- EXEC SQL INSERT INTO
- stock (s_i_id, s_w_id, s_quantity,
- s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05,
- s_dist_06, s_dist_07, s_dist_08, s_dist_09, s_dist_10,
- s_data, s_ytd, s_cnt_order, s_cnt_remote)
- values (:s_i_id, :s_w_id, :s_quantity,
- :s_dist_01, :s_dist_02, :s_dist_03, :s_dist_04, :s_dist_05,
- :s_dist_06, :s_dist_07, :s_dist_08, :s_dist_09, :s_dist_10,
- :s_data, 0, 0, 0);
- if ( option_debug )
- printf( "SID = %ld, WID = %ld, Quan = %ld\ n",
- s_i_id, s_w_id, s_quantity );
- if ( !(s_i_id % 100) ) {
- EXEC SQL COMMIT WORK;
- printf(".");
- if ( !(s_i_id % 5000) ) printf(" %ld\ n",s_i_id);
- }
- }
- EXEC SQL COMMIT WORK;
- printf(" Stock Done.\ n");
- return;
+	for (i = 0; i < MAXITEMS/10; ++i)
+		orig[i]=0;
+
+	for (i = 0; i < MAXITEMS/10; ++i)
+	{
+		do
+		{
+			pos=RandomNumber(0L,MAXITEMS);
+
+		} while (orig[pos]);
+
+		orig[pos] = 1;
+	}
+
+	for (s_i_id = 1; s_i_id <= MAXITEMS; ++s_i_id)
+	{
+		/* Generate Stock Data */
+		s_quantity=RandomNumber(10L,100L);
+		MakeAlphaString(24,24,s_dist_01);
+		MakeAlphaString(24,24,s_dist_02);
+		MakeAlphaString(24,24,s_dist_03);
+		MakeAlphaString(24,24,s_dist_04);
+		MakeAlphaString(24,24,s_dist_05);
+		MakeAlphaString(24,24,s_dist_06);
+		MakeAlphaString(24,24,s_dist_07);
+		MakeAlphaString(24,24,s_dist_08);
+		MakeAlphaString(24,24,s_dist_09);
+		MakeAlphaString(24,24,s_dist_10);
+		sdatasiz=MakeAlphaString(26,50,s_data);
+
+		if (orig[s_i_id])
+		{
+			pos=RandomNumber(0L,sdatasiz-8);
+			s_data[pos]		='O';
+			s_data[pos+1]	='R';
+			s_data[pos+2]	='I';
+			s_data[pos+3]	='G';
+			s_data[pos+4]	='I';
+			s_data[pos+5]	='N';
+			s_data[pos+6]	='A';
+			s_data[pos+7]	='L';
+		}
+
+		EXEC SQL INSERT INTO
+			stock (s_i_id, s_w_id, s_quantity,
+					s_dist_01, s_dist_02, s_dist_03, s_dist_04, s_dist_05,
+					s_dist_06, s_dist_07, s_dist_08, s_dist_09, s_dist_10,
+					s_data, s_ytd, s_cnt_order, s_cnt_remote)
+			values (:s_i_id, :s_w_id, :s_quantity,
+					:s_dist_01, :s_dist_02, :s_dist_03, :s_dist_04, :s_dist_05,
+					:s_dist_06, :s_dist_07, :s_dist_08, :s_dist_09, :s_dist_10,
+					:s_data, 0, 0, 0);
+
+		if (option_debug)
+			printf("SID = %ld, WID = %ld, Quan = %ld\n", s_i_id, s_w_id, s_quantity);
+
+		if (!(s_i_id % 100))
+		{
+			EXEC SQL COMMIT WORK;
+
+			printf(".");
+
+			if (!(s_i_id % 5000))
+				printf(" %ld\n", s_i_id);
+		}
+	}
+
+	EXEC SQL COMMIT WORK;
+
+	printf(" Stock Done.\n");
+	return;
+
 sqlerr:
- Error();
+	Error();
 }
 
 /*==================================================================+
@@ -398,52 +457,52 @@ sqlerr:
  +==================================================================*/
 void District(long w_id)
 {
+	EXEC SQL BEGIN DECLARE SECTION;
+	long d_id;
+	long d_w_id;
+	char d_name[10];
+	char d_street_1[20];
+	char d_street_2[20];
+	char d_city[20];
+	char d_state[2];
+	char d_zip[9];
+	float d_tax;
+	float d_ytd;
+	long d_next_o_id;
+	EXEC SQL END DECLARE SECTION;
 
- EXEC SQL BEGIN DECLARE SECTION;
- long d_id;
- long d_w_id;
- char d_name[10];
- char d_street_1[20];
- char d_street_2[20];
- char d_city[20];
- char d_state[2];
- char d_zip[9];
- float d_tax;
- float d_ytd;
- long d_next_o_id;
- EXEC SQL END DECLARE SECTION;
+	EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
 
- EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+	printf("Loading District\n");
+	d_w_id = w_id;
+	d_ytd = 30000.0;
+	d_next_o_id = 3001L;
 
- printf("Loading District\ n");
- d_w_id=w_id;
- d_ytd=30000.0;
- d_next_o_id=3001L;
- for (d_id=1; d_id<=DIST_PER_WARE; d_id++) {
+	for (d_id = 1; d_id <= DIST_PER_WARE; ++d_id)
+	{
+		/* Generate District Data */
+		MakeAlphaString(6L, 10L, d_name);
+		MakeAddress(d_street_1, d_street_2, d_city, d_state, d_zip);
+		d_tax = ((float)RandomNumber(10L, 20L)) / 100.0;
 
- /* Generate District Data */
- MakeAlphaString(6L,10L,d_name);
- MakeAddress( d_street_1, d_street_2, d_city, d_state, d_zip );
- d_tax=((float)RandomNumber(10L,20L))/ 100.0;
+		EXEC SQL INSERT INTO
+			district (d_id, d_w_id, d_name,
+						d_street_1, d_street_2, d_city, d_state, d_zip,
+						d_tax, d_ytd, d_next_o_id)
+			values (:d_id, :d_w_id, :d_name,
+					:d_street_1, :d_street_2, :d_city, :d_state, :d_zip,
+					:d_tax, :d_ytd, :d_next_o_id);
 
- EXEC SQL INSERT INTO
- district (d_id, d_w_id, d_name,
- d_street_1, d_street_2, d_city, d_state, d_zip,
- d_tax, d_ytd, d_next_o_id)
- values (:d_id, :d_w_id, :d_name,
- :d_street_1, :d_street_2, :d_city, :d_state, :d_zip,
- :d_tax, :d_ytd, :d_next_o_id);
+		if (option_debug)
+			printf("DID = %ld, WID = %ld, Name = %10s, Tax = %5.2f\n", d_id, d_w_id, d_name, d_tax);
+	}
 
- if ( option_debug )
- printf( "DID = %ld, WID = %ld, Name = %10s, Tax = %5.2f\ n",
- d_id, d_w_id, d_name, d_tax );
+	EXEC SQL COMMIT WORK;
 
- }
- EXEC SQL COMMIT WORK;
+	return;
 
- return;
 sqlerr:
- Error();
+	Error();
 }
 
 /*==================================================================+
@@ -459,92 +518,104 @@ sqlerr:
  +==================================================================*/
 void Customer(long d_id, long w_id)
 {
- EXEC SQL BEGIN DECLARE SECTION;
- long c_id;
- long c_d_id;
- long c_w_id;
- char c_first[16];
- char c_middle[2];
- char c_last[16];
- char c_street_1[20];
- char c_street_2[20];
- char c_city[20];
- char c_state[2];
- char c_zip[9];
- char c_phone[16];
- char c_since[11];
- char c_credit[2];
- long c_credit_lim;
- float c_discount;
- float c_balance;
- char c_data[500];
- float h_amount;
- char h_data[24];
- EXEC SQL END DECLARE SECTION;
+	EXEC SQL BEGIN DECLARE SECTION;
+	long c_id;
+	long c_d_id;
+	long c_w_id;
+	char c_first[16];
+	char c_middle[2];
+	char c_last[16];
+	char c_street_1[20];
+	char c_street_2[20];
+	char c_city[20];
+	char c_state[2];
+	char c_zip[9];
+	char c_phone[16];
+	char c_since[11];
+	char c_credit[2];
+	long c_credit_lim;
+	float c_discount;
+	float c_balance;
+	char c_data[500];
+	float h_amount;
+	char h_data[24];
+	EXEC SQL END DECLARE SECTION;
 
- EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+	EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
 
- printf("Loading Customer for DID=%ld, WID=%ld\ n",d_id,w_id);
+	printf("Loading Customer for DID=%ld, WID=%ld\n", d_id, w_id);
 
- for (c_id=1; c_id<=CUST_PER_DIST; c_id++) {
+	for (c_id = 1; c_id <= CUST_PER_DIST; ++c_id)
+	{
+		/* Generate Customer Data */
+		c_d_id=d_id;
+		c_w_id=w_id;
+		MakeAlphaString(8, 16, c_first);
+		c_middle[0]='O'; c_middle[1]='E';
 
- /* Generate Customer Data */
- c_d_id=d_id;
- c_w_id=w_id;
- MakeAlphaString( 8, 16, c_first );
- c_middle[0]='O'; c_middle[1]='E';
- if (c_id <= 1000)
- Lastname(c_id-1,c_last);
- else
- Lastname(NURand(255,0,999),c_last);
- MakeAddress( c_street_1, c_street_2, c_city, c_state, c_zip );
- MakeNumberString( 16, 16, c_phone );
- if (RandomNumber(0L,1L))
- c_credit[0]='G';
- else
- c_credit[0]='B';
- c_credit[1]='C';
- c_credit_lim=50000;
- c_discount=((float)RandomNumber(0L,50L))/ 100.0;
- c_balance= -10.0;
- MakeAlphaString(300,500,c_data);
+		if (c_id <= 1000)
+			Lastname(c_id-1,c_last);
+		else
+			Lastname(NURand(255,0,999),c_last);
 
- EXEC SQL INSERT INTO
- customer (c_id, c_d_id, c_w_id,
- c_first, c_middle, c_last,
- c_street_1, c_street_2, c_city, c_state, c_zip,
- c_phone, c_since, c_credit,
- c_credit_lim, c_discount, c_balance, c_data,
- c_ytd_payment, c_cnt_payment, c_cnt_delivery)
- values (:c_id, :c_d_id, :c_w_id,
- :c_first, :c_middle, :c_last,
- :c_street_1, :c_street_2, :c_city, :c_state, :c_zip,
- :c_phone, :timestamp, :c_credit,
- :c_credit_lim, :c_discount, :c_balance, :c_data,
- 10.0, 1, 0) ;
+		MakeAddress(c_street_1, c_street_2, c_city, c_state, c_zip);
+		MakeNumberString(16, 16, c_phone);
 
- h_amount=10.0;
- MakeAlphaString(12,24,h_data);
- EXEC SQL INSERT INTO
- history (h_c_id, h_c_d_id, h_c_w_id,
- h_w_id, h_d_id, h_date, h_amount, h_data)
- values (:c_id, :c_d_id, :c_w_id,
- :c_w_id, :c_d_id, :timestamp, :h_amount, :h_data);
+		if (RandomNumber(0L,1L))
+			c_credit[0]='G';
+		else
+			c_credit[0]='B';
 
- if ( option_debug )
- printf( "CID = %ld, LST = %s, P# = %s\ n",
- c_id, c_last, c_phone );
- if ( !(c_id % 100) ) {
- EXEC SQL COMMIT WORK;
- printf(".");
- if ( !(c_id % 1000) ) printf(" %ld\ n",c_id);
- }
- }
- printf("Customer Done.\ n");
+		c_credit[1]='C';
+		c_credit_lim=50000;
+		c_discount=((float)RandomNumber(0L,50L))/ 100.0;
+		c_balance= -10.0;
 
- return;
+		MakeAlphaString(300,500,c_data);
+
+		EXEC SQL INSERT INTO
+			customer (c_id, c_d_id, c_w_id,
+						c_first, c_middle, c_last,
+						c_street_1, c_street_2, c_city, c_state, c_zip,
+						c_phone, c_since, c_credit,
+						c_credit_lim, c_discount, c_balance, c_data,
+						c_ytd_payment, c_cnt_payment, c_cnt_delivery)
+			values (:c_id, :c_d_id, :c_w_id,
+					:c_first, :c_middle, :c_last,
+					:c_street_1, :c_street_2, :c_city, :c_state, :c_zip,
+					:c_phone, :timestamp, :c_credit,
+					:c_credit_lim, :c_discount, :c_balance, :c_data,
+					10.0, 1, 0);
+
+		h_amount=10.0;
+		MakeAlphaString(12,24,h_data);
+
+		EXEC SQL INSERT INTO
+			history (h_c_id, h_c_d_id, h_c_w_id,
+						h_w_id, h_d_id, h_date, h_amount, h_data)
+			values (:c_id, :c_d_id, :c_w_id,
+					:c_w_id, :c_d_id, :timestamp, :h_amount, :h_data);
+
+		if (option_debug)
+			printf("CID = %ld, LST = %s, P# = %s\n", c_id, c_last, c_phone);
+
+		if (!(c_id % 100))
+		{
+			EXEC SQL COMMIT WORK;
+
+			printf(".");
+
+			if (!(c_id % 1000))
+				printf(" %ld\n",c_id);
+		}
+	}
+
+	printf("Customer Done.\n");
+
+	return;
+
 sqlerr:
- Error();
+	Error();
 }
 
 /*==================================================================+
@@ -558,106 +629,113 @@ sqlerr:
  +==================================================================*/
 void Orders(long d_id, int w_id)
 {
+	EXEC SQL BEGIN DECLARE SECTION;
+	long o_id;
+	long o_c_id;
+	long o_d_id;
+	long o_w_id;
+	long o_carrier_id;
+	long o_ol_cnt;
+	long ol;
+	long ol_i_id;
+	long ol_supply_w_id;
+	long ol_quantity;
+	long ol_amount;
+	char ol_dist_info[24];
+	float i_price;
+	float c_discount;
+	EXEC SQL END DECLARE SECTION;
 
- EXEC SQL BEGIN DECLARE SECTION;
- long o_id;
- long o_c_id;
- long o_d_id;
- long o_w_id;
- long o_carrier_id;
- long o_ol_cnt;
- long ol;
- long ol_i_id;
- long ol_supply_w_id;
- long ol_quantity;
- long ol_amount;
- char ol_dist_info[24];
- float i_price;
- float c_discount;
- EXEC SQL END DECLARE SECTION;
+	EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
 
- EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+	printf("Loading Orders for D=%ld, W= %ld\n", d_id, w_id);
 
- printf("Loading Orders for D=%ld, W= %ld\ n", d_id, w_id);
- o_d_id=d_id;
- o_w_id=w_id;
- InitPermutation(); /* initialize permutation of customer numbers */
- for (o_id=1; o_id<=ORD_PER_DIST; o_id++) {
+	o_d_id=d_id;
+	o_w_id=w_id;
+	InitPermutation(); /* initialize permutation of customer numbers *//* TODO: implement InitPermutation() */
 
- /* Generate Order Data */
- o_c_id=GetPermutation();
- o_carrier_id=RandomNumber(1L,10L);
- o_ol_cnt=RandomNumber(5L,15L);
+	for (o_id=1; o_id<=ORD_PER_DIST; o_id++)
+	{
+		/* Generate Order Data */
+		o_c_id=GetPermutation();
+		o_carrier_id=RandomNumber(1L,10L);
+		o_ol_cnt=RandomNumber(5L,15L);
 
- if (o_id > 2100) /* the last 900 orders have not been delivered) */
- {
- EXEC SQL INSERT INTO
- orders (o_id, o_c_id, o_d_id, o_w_id,
- o_entry_d, o_carrier_id, o_ol_cnt, o_all_local)
- values (:o_id, :o_c_id, :o_d_id, :o_w_id,
- :timestamp, NULL, :o_ol_cnt, 1);
- EXEC SQL INSERT INTO
- new_order (no_o_id, no_d_id, no_w_id)
- values (:o_id, :o_d_id, :o_w_id);
- }
- else
- EXEC SQL INSERT INTO
- orders (o_id, o_c_id, o_d_id, o_w_id,
- o_entry_d, o_carrier_id, o_ol_cnt, o_all_local)
- values (:o_id, :o_c_id, :o_d_id, :o_w_id,
- :timestamp, :o_carrier_id, :o_ol_cnt, 1);
+		if (o_id > 2100) /* the last 900 orders have not been delivered) */
+		{
+			EXEC SQL INSERT INTO
+				orders (o_id, o_c_id, o_d_id, o_w_id,
+						o_entry_d, o_carrier_id, o_ol_cnt, o_all_local)
+				values (:o_id, :o_c_id, :o_d_id, :o_w_id,
+						:timestamp, NULL, :o_ol_cnt, 1);
 
+			EXEC SQL INSERT INTO
+				new_order (no_o_id, no_d_id, no_w_id)
+				values (:o_id, :o_d_id, :o_w_id);
+		}
+		else
+			EXEC SQL INSERT INTO
+				orders (o_id, o_c_id, o_d_id, o_w_id,
+						o_entry_d, o_carrier_id, o_ol_cnt, o_all_local)
+				values (:o_id, :o_c_id, :o_d_id, :o_w_id,
+						:timestamp, :o_carrier_id, :o_ol_cnt, 1);
 
+		if (option_debug)
+			printf("OID = %ld, CID = %ld, DID = %ld, WID = %ld\n", o_id, o_c_id, o_d_id, o_w_id);
 
- if ( option_debug )
- printf( "OID = %ld, CID = %ld, DID = %ld, WID = %ld\ n",
- o_id, o_c_id, o_d_id, o_w_id);
+		for (ol = 1; ol <= o_ol_cnt; ++ol)
+		{
+			/* Generate Order Line Data */
+			ol_i_id=RandomNumber(1L,MAXITEMS);
+			ol_supply_w_id=o_w_id;
+			ol_quantity=5;
+			ol_amount=0.0;
 
- for (ol=1; ol<=o_ol_cnt; ol++) {
- /* Generate Order Line Data */
- ol_i_id=RandomNumber(1L,MAXITEMS);
- ol_supply_w_id=o_w_id;
- ol_quantity=5;
- ol_amount=0.0;
+			MakeAlphaString(24,24,ol_dist_info);
 
- MakeAlphaString(24,24,ol_dist_info);
+			if (o_id > 2100)
+				EXEC SQL INSERT INTO
+					order_line (ol_o_id, ol_d_id, ol_w_id, ol_number,
+								ol_i_id, ol_supply_w_id, ol_quantity, ol_amount,
+								ol_dist_info, ol_delivery_d)
+					values (:o_id, :o_d_id, :o_w_id, :ol,
+							:ol_i_id, :ol_supply_w_id, :ol_quantity, :ol_amount,
+							:ol_dist_info, NULL);
+			else
+				EXEC SQL INSERT INTO
+					order_line (ol_o_id, ol_d_id, ol_w_id, ol_number,
+								ol_i_id, ol_supply_w_id, ol_quantity,
+								((float)(RandomNumber(10L, 10000L))/ 100.0,
+								ol_dist_info, ol_delivery_d)
+					values (:o_id, :o_d_id, :o_w_id, :ol,
+							:ol_i_id, :ol_supply_w_id, :ol_quantity,
+							:ol_amount,
+							:ol_dist_info, datetime);
 
- if (o_id > 2100)
- EXEC SQL INSERT INTO
- order_line (ol_o_id, ol_d_id, ol_w_id, ol_number,
- ol_i_id, ol_supply_w_id, ol_quantity, ol_amount,
- ol_dist_info, ol_delivery_d)
- values (:o_id, :o_d_id, :o_w_id, :ol,
- :ol_i_id, :ol_supply_w_id, :ol_quantity, :ol_amount,
- :ol_dist_info, NULL);
- else
- EXEC SQL INSERT INTO
- order_line (ol_o_id, ol_d_id, ol_w_id, ol_number,
- ol_i_id, ol_supply_w_id, ol_quantity,
- ((float)(RandomNumber(10L, 10000L))/ 100.0,
- ol_dist_info, ol_delivery_d)
- values (:o_id, :o_d_id, :o_w_id, :ol,
- :ol_i_id, :ol_supply_w_id, :ol_quantity,
- :ol_amount,
- :ol_dist_info, datetime);
+			if (option_debug)
+				printf("OL = %ld, IID = %ld, QUAN = %ld, AMT = %8.2f\n", ol, ol_i_id, ol_quantity, ol_amount);
 
- if ( option_debug )
- printf( "OL = %ld, IID = %ld, QUAN = %ld, AMT = %8.2f\ n",
- ol, ol_i_id, ol_quantity, ol_amount);
+		}
 
- }
- if ( !(o_id % 100) ) {
- printf(".");
- EXEC SQL COMMIT WORK;
- if ( !(o_id % 1000) ) printf(" %ld\ n",o_id);
- }
- }
- EXEC SQL COMMIT WORK;
+		if (!(o_id % 100))
+		{
+			printf(".");
 
- printf("Orders Done.\ n");
- return;
+			EXEC SQL COMMIT WORK;
+
+			if (!(o_id % 1000))
+				printf(" %ld\n",o_id);
+		}
+	}
+
+	EXEC SQL COMMIT WORK;
+
+	printf("Orders Done.\n");
+
+	return;
+
 sqlerr:
- Error();
+	Error();
 }
 
 /*==================================================================+
@@ -669,11 +747,11 @@ sqlerr:
  +==================================================================*/
 void MakeAddress(char *str1, char *str2, char *city, char *state, char *zip)
 {
- MakeAlphaString(10,20,str1); /* Street 1*/
- MakeAlphaString(10,20,str2); /* Street 2*/
- MakeAlphaString(10,20,city); /* City */
- MakeAlphaString(2,2,state); /* State */
- MakeNumberString(9,9,zip); /* Zip */
+	MakeAlphaString(10, 20, str1); /* Street 1*/
+	MakeAlphaString(10, 20, str2); /* Street 2*/
+	MakeAlphaString(10, 20, city); /* City */
+	MakeAlphaString(2, 2, state); /* State */
+	MakeNumberString(9, 9, zip); /* Zip */
 }
 
 /*==================================================================+
@@ -685,12 +763,12 @@ void MakeAddress(char *str1, char *str2, char *city, char *state, char *zip)
  +==================================================================*/
 void Error()
 {
- printf( "SQL Error %d\ n", sqlca.sqlcode);
+	printf("SQL Error %d\n", sqlca.sqlcode);
 
- EXEC SQL WHENEVER SQLERROR CONTINUE;
- EXEC SQL ROLLBACK WORK RELEASE;
+	EXEC SQL WHENEVER SQLERROR CONTINUE;
+	EXEC SQL ROLLBACK WORK RELEASE;
 
- exit( -1 );
+	exit(-1);
 }
 
 /*==================================================================+
@@ -704,14 +782,13 @@ void Error()
  +==================================================================*/
 void Lastname(int num, char *name)
 {
- int i;
- static char *n[] =
- {"BAR", "OUGHT", "ABLE", "PRI", "PRES",
- "ESE", "ANTI", "CALLY", "ATION", "EING"};
+	int i;
+	static char *n[] = {"BAR", "OUGHT", "ABLE", "PRI", "PRES",
+						"ESE", "ANTI", "CALLY", "ATION", "EING"};
 
- strcpy(name,n[num/ 1000]);
- strcat(name,n[(num/ 10)%10]);
- strcat(name,n[num%10]);
+	strcpy(name, n[num / 1000]);
+	strcat(name, n[(num / 10) % 10]);
+	strcat(name, n[num % 10]);
 
- return;
+	return;
 }
