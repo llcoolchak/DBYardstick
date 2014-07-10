@@ -15,6 +15,7 @@
 \include_relative tpcc_ddl_pgsql.sql
 
 select load_item();
-select add_warehouses(1, 1);
+select add_warehouses(1, 15);
 select data_load_sanity_tests();
 select consistency_checks();
+vacuum analyze;
