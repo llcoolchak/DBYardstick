@@ -93,8 +93,8 @@ var NullDB = (function () {
     };
     return NullDB;
 })();
-var OrderLine = (function () {
-    function OrderLine(ol_i_id, ol_supply_w_id, ol_quantity, i_price, i_name, i_data, s_quantity, brand_generic, ol_amount) {
+var NewOrderLine = (function () {
+    function NewOrderLine(ol_i_id, ol_supply_w_id, ol_quantity, i_price, i_name, i_data, s_quantity, brand_generic, ol_amount) {
         this.ol_i_id = ol_i_id;
         this.ol_supply_w_id = ol_supply_w_id;
         this.ol_quantity = ol_quantity;
@@ -105,7 +105,7 @@ var OrderLine = (function () {
         this.brand_generic = brand_generic;
         this.ol_amount = ol_amount;
     }
-    return OrderLine;
+    return NewOrderLine;
 })();
 
 /* New Order I/O, per Clause 2.4.3 */
@@ -115,7 +115,7 @@ var NewOrder = (function () {
 
         var i;
         for (i = 0; i < 15; ++i) {
-            this.order_lines[i] = new OrderLine(0, 0, 0, 0, '', '', 0, '', 0);
+            this.order_lines[i] = new NewOrderLine(0, 0, 0, 0, '', '', 0, '', 0);
         }
     }
     return NewOrder;
@@ -145,6 +145,29 @@ var Delivery = (function () {
         }
     }
     return Delivery;
+})();
+
+var OrderStatusLine = (function () {
+    function OrderStatusLine(ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_delivery_d) {
+        this.ol_i_id = ol_i_id;
+        this.ol_supply_w_id = ol_supply_w_id;
+        this.ol_quantity = ol_quantity;
+        this.ol_amount = ol_amount;
+        this.ol_delivery_d = ol_delivery_d;
+    }
+    return OrderStatusLine;
+})();
+
+var OrderStatus = (function () {
+    function OrderStatus() {
+        this.order_lines = [];
+
+        var i;
+        for (i = 0; i < 15; ++i) {
+            this.order_lines[i] = new OrderStatusLine(0, 0, 0, 0, new Date());
+        }
+    }
+    return OrderStatus;
 })();
 /// <reference path="../typings/pg/pg.d.ts" />
 var __extends = this.__extends || function (d, b) {
@@ -219,7 +242,7 @@ var Postgres = (function () {
                 done();
 
                 if (err) {
-                    callback('Error: ' + err, input);
+                    callback('Error: ' + JSON.stringify(err), input);
                     return;
                 }
 
@@ -303,7 +326,7 @@ var Postgres = (function () {
                 done();
 
                 if (err) {
-                    callback('Error: ' + err, input);
+                    callback('Error: ' + JSON.stringify(err), input);
                     return;
                 }
 
@@ -354,7 +377,7 @@ var Postgres = (function () {
     * it has very relaxed response-time requirements, we should gather multiple
     * transactions here and execute them all in one go.
     *
-    * TODO: Implement the above idea.
+    * TODO: Implement the above idea, and see if it yeilds better results.
     */
     Postgres.prototype.doDeliveryTransaction = function (input, callback) {
         var self = this;
@@ -377,7 +400,7 @@ var Postgres = (function () {
 
                 if (err) {
                     /* TODO: In case of 'Serialization' error, retry the transaction. */
-                    callback('Error: ' + err, input);
+                    callback('Error: ' + JSON.stringify(err), input);
                     return;
                 }
 
@@ -966,7 +989,7 @@ var DeliveryProfile = (function () {
         this.details = new DeliveryDetails();
 
         /*
-        * This Delivery transaction parameter does not change for a terminal, so
+        * This warehouse-id parameter does not change for a terminal, so
         * initialize it here.
         */
         this.delivery.w_id = this.term.w_id;
@@ -1031,6 +1054,14 @@ var OrderStatusProfile = (function () {
     function OrderStatusProfile(term) {
         this.meanThinkTime = 10;
         this.term = term;
+
+        this.order_status = new OrderStatus();
+
+        /*
+        * This warehouse-id parameter does not change for a terminal, so initialize
+        * it here.
+        */
+        this.order_status.w_id = this.term.w_id;
     }
     OrderStatusProfile.prototype.getKeyingTime = function () {
         return 2000;
@@ -1041,13 +1072,23 @@ var OrderStatusProfile = (function () {
     };
 
     OrderStatusProfile.prototype.prepareInput = function () {
-        this.status = 'P';
+        var order_status = this.order_status;
+
+        order_status.d_id = getRand(1, 10);
+
+        var y = getRand(1, 100);
+
+        if (y <= 60) {
+            order_status.c_id = 0;
+            order_status.c_last = generate_c_last(NURand(255, 0, 999));
+        } else {
+            order_status.c_id = NURand(1023, 1, 3000);
+            order_status.c_last = '';
+        }
     };
 
     OrderStatusProfile.prototype.execute = function () {
         var self = this;
-
-        self.status = 'E';
 
         /* Do-nothing transaction */
         /* Simulate a transaction that takes 1 second */
@@ -1061,8 +1102,6 @@ var OrderStatusProfile = (function () {
 
         ++xact_counts['Order Status'];
 
-        self.status = 'R';
-
         self.term.refreshDisplay();
 
         setTimeout(function () {
@@ -1071,7 +1110,7 @@ var OrderStatusProfile = (function () {
     };
 
     OrderStatusProfile.prototype.getScreen = function () {
-        return orderStatusScreen.replace('Status:  ', 'Status: ' + this.status);
+        return orderStatusScreen.replace('Status:  ', 'Status: ');
     };
     return OrderStatusProfile;
 })();
@@ -1139,7 +1178,7 @@ var newOrderScreen = "|---------------------------------------------------------
 
 var paymentScreen = "|--------------------------------------------------------------------------------|\n" + "|                                     Payment                                    |\n" + "|Date:                                                                           |\n" + "|                                                                                |\n" + "|Warehouse:                               District:                              |\n" + "|W_STREET_1                               D_STREET_1                             |\n" + "|W_STREET_2                               D_STREET_2                             |\n" + "|W_CITY                                   D_CITY                                 |\n" + "|                                                                                |\n" + "|Customer:      Cust-Warehouse:        Cust-District:    Cust-Discount:          |\n" + "|Name:                                                                           |\n" + "|      C_STREET_1                         Cust-Phone:                            |\n" + "|      C_STREET_2                         Cust-Since:                            |\n" + "|      C_CITY                             Cust-Credit:                           |\n" + "|                                                                                |\n" + "|Amount Paid:          New Cust-Balance:                                         |\n" + "|Credit Limit:                                                                   |\n" + "|                                                                                |\n" + "|Cust-Data: CUST-DATA1                                                           |\n" + "|           CUST-DATA2                                                           |\n" + "|           CUST-DATA3                                                           |\n" + "|           CUST-DATA4                                                           |\n" + "|                                                                                |\n" + "|________________________________________________________________________________|\n";
 
-var orderStatusScreen = "|--------------------------------------------------------------------------------|\n" + "|                                   Order Status                                 |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "| Status:                                                                        |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|________________________________________________________________________________|\n";
+var orderStatusScreen = "|--------------------------------------------------------------------------------|\n" + "|                                   Order Status                                 |\n" + "|Warehouse:        District:                                                     |\n" + "|Customer:       Name:                                      Balance: $           |\n" + "|Order Number:          Order Date:            Total:                            |\n" + "|                                                                                |\n" + "| Supp_W Item_Id Item_Name                Qty Stock_Qty BG  Price   Amount       |\n" + "| 11                                                                             |\n" + "| 12                                                                             |\n" + "| 13                                                                             |\n" + "| 14                                                                             |\n" + "| 15                                                                             |\n" + "| 16                                                                             |\n" + "| 17                                                                             |\n" + "| 18                                                                             |\n" + "| 19                                                                             |\n" + "| 20                                                                             |\n" + "| 21                                                                             |\n" + "| 22                                                                             |\n" + "| 23                                                                             |\n" + "| 24                                                                             |\n" + "| 25                                                                             |\n" + "| Item number is not valid                                                       |\n" + "|________________________________________________________________________________|\n";
 
 var deliveryScreen = "|--------------------------------------------------------------------------------|\n" + "|                                     Delivery                                   |\n" + "| Warehouse:                                                                     |\n" + "|                                                                                |\n" + "| Carrier Number:                                                                |\n" + "|                                                                                |\n" + "| Execution Status:                                                              |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|________________________________________________________________________________|\n";
 

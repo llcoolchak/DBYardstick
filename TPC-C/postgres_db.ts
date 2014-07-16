@@ -73,7 +73,7 @@ class Postgres implements TPCCDatabase {
 				done();
 
 				if (err) {
-					callback('Error: ' + err, input);
+					callback('Error: ' + JSON.stringify(err), input);
 					return;
 				}
 
@@ -169,7 +169,7 @@ class Postgres implements TPCCDatabase {
 				done();
 
 				if(err) {
-					callback('Error: ' + err, input);
+					callback('Error: ' + JSON.stringify(err), input);
 					return;
 				}
 
@@ -249,7 +249,7 @@ class Postgres implements TPCCDatabase {
 
 				if(err) {
 					/* TODO: In case of 'Serialization' error, retry the transaction. */
-					callback('Error: ' + err, input);
+					callback('Error: ' + JSON.stringify(err), input);
 					return;
 				}
 

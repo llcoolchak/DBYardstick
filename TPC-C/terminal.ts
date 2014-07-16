@@ -754,7 +754,7 @@ class DeliveryProfile implements TransactionProfile {
     this.details = new DeliveryDetails();
 
     /*
-     * This Delivery transaction parameter does not change for a terminal, so
+     * This warehouse-id parameter does not change for a terminal, so
      * initialize it here.
      */
     this.delivery.w_id = this.term.w_id;
@@ -830,10 +830,18 @@ class DeliveryProfile implements TransactionProfile {
 class OrderStatusProfile implements TransactionProfile {
 
   term: Terminal;  /* term.w_id is the terminal's warehouse */
-  status: string;  /* TODO: remove this and add actual variables */
+  order_status: OrderStatus;
 
   constructor(term: Terminal) {
     this.term = term;
+
+    this.order_status = new OrderStatus();
+
+    /*
+     * This warehouse-id parameter does not change for a terminal, so initialize
+     * it here.
+     */
+    this.order_status.w_id = this.term.w_id;
   }
 
   getKeyingTime() {
@@ -847,14 +855,25 @@ class OrderStatusProfile implements TransactionProfile {
 
   prepareInput() {
 
-    this.status = 'P';
+    var order_status = this.order_status;
+
+    order_status.d_id = getRand(1, 10);
+
+    var y = getRand(1, 100);
+
+    if (y <= 60) {
+      order_status.c_id      = 0;
+      order_status.c_last    = generate_c_last(NURand(255,0,999));
+    } else {
+      order_status.c_id      = NURand(1023,1,3000);
+      order_status.c_last    = '';
+    }
+
   }
 
   execute(){
 
     var self = this;
-
-    self.status = 'E';
 
     /* Do-nothing transaction */
 
@@ -870,8 +889,6 @@ class OrderStatusProfile implements TransactionProfile {
 
     ++xact_counts['Order Status'];
 
-    self.status = 'R';
-
     self.term.refreshDisplay();
 
     setTimeout(function(){
@@ -880,7 +897,7 @@ class OrderStatusProfile implements TransactionProfile {
   }
 
   getScreen(): string {
-      return orderStatusScreen.replace('Status:  ', 'Status: ' + this.status);
+      return orderStatusScreen.replace('Status:  ', 'Status: ' );
   }
 }
 
@@ -1038,27 +1055,27 @@ var orderStatusScreen: string =
 //       01234567890123456789012345678901234567890123456789012345678901234567890123456789
 /*01*/ "|--------------------------------------------------------------------------------|\n"
 /*02*/+"|                                   Order Status                                 |\n"
-/*03*/+"|                                                                                |\n"
-/*04*/+"|                                                                                |\n"
-/*05*/+"| Status:                                                                        |\n"
+/*03*/+"|Warehouse:        District:                                                     |\n"
+/*04*/+"|Customer:       Name:                                      Balance: $           |\n"
+/*05*/+"|Order Number:          Order Date:            Total:                            |\n"
 /*06*/+"|                                                                                |\n"
-/*07*/+"|                                                                                |\n"
-/*08*/+"|                                                                                |\n"
-/*10*/+"|                                                                                |\n"
-/*11*/+"|                                                                                |\n"
-/*12*/+"|                                                                                |\n"
-/*13*/+"|                                                                                |\n"
-/*14*/+"|                                                                                |\n"
-/*09*/+"|                                                                                |\n"
-/*15*/+"|                                                                                |\n"
-/*16*/+"|                                                                                |\n"
-/*17*/+"|                                                                                |\n"
-/*18*/+"|                                                                                |\n"
-/*19*/+"|                                                                                |\n"
-/*20*/+"|                                                                                |\n"
-/*21*/+"|                                                                                |\n"
-/*22*/+"|                                                                                |\n"
-/*23*/+"|                                                                                |\n"
+/*07*/+"| Supp_W Item_Id Item_Name                Qty Stock_Qty BG  Price   Amount       |\n"
+/*08*/+"| 11                                                                             |\n"
+/*09*/+"| 12                                                                             |\n"
+/*10*/+"| 13                                                                             |\n"
+/*11*/+"| 14                                                                             |\n"
+/*12*/+"| 15                                                                             |\n"
+/*13*/+"| 16                                                                             |\n"
+/*14*/+"| 17                                                                             |\n"
+/*15*/+"| 18                                                                             |\n"
+/*16*/+"| 19                                                                             |\n"
+/*17*/+"| 20                                                                             |\n"
+/*18*/+"| 21                                                                             |\n"
+/*19*/+"| 22                                                                             |\n"
+/*20*/+"| 23                                                                             |\n"
+/*21*/+"| 24                                                                             |\n"
+/*22*/+"| 25                                                                             |\n"
+/*23*/+"| Item number is not valid                                                       |\n"
 /*24*/+"|________________________________________________________________________________|\n"
 ;
 
