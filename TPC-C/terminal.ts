@@ -3,6 +3,7 @@ var printf = require('printf');
 
 var g_num_warehouses: number = 0;
 var g_terminals: Terminal[] = [];
+var g_hammer: boolean = false;  /* Hammer mode currently doesn't work reliably and consistently */
 var nullDBResponseTime: number = 0*1000; /* in milliseconds; Response time of the database that doesn't do anything */
 
 /* Return an integer in the inclusive range [min, max] */
@@ -180,7 +181,7 @@ class TPCCStats {
   }
 }
 
-var menuThinkTime: number = 1000;
+var menuThinkTime: number = g_hammer ? 0 : 1000;
 
 class Terminal  {
 
@@ -242,8 +243,10 @@ class Terminal  {
      * (a) reduce CPU consumption/increase generated load, or (b) to comply with
      * specification's word, upon insistence by the auditor.
      */
-     setTimeout(function(){self.chooseTransaction();}, menuThinkTime);
-     //self.chooseTransaction();
+     if (g_hammer || menuThinkTime === 0)
+       self.chooseTransaction();
+     else
+       setTimeout(function(){self.chooseTransaction();}, menuThinkTime);
   }
 
   chooseTransaction() {
@@ -354,12 +357,18 @@ class NewOrderProfile implements TransactionProfile {
   }
 
   getKeyingTime() {
-    return 18000;  /* Clause 5.2.5.7 */
+    if (g_hammer)
+      return 0;
+    else
+      return 18000;  /* Clause 5.2.5.7 */
   }
 
   meanThinkTime: number = 12;  /* Clause 5.2.5.7 */
   getThinkTime() {
-    return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
+    if (g_hammer)
+      return 0;
+    else
+        return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
   }
 
   prepareInput() {
@@ -592,12 +601,18 @@ class PaymentProfile implements TransactionProfile {
   }
 
   getKeyingTime() {
-    return 3000;  /* Clause 5.2.5.7 */
+    if (g_hammer)
+      return 0;
+    else
+      return 3000;  /* Clause 5.2.5.7 */
   }
 
   meanThinkTime: number = 12;  /* Clause 5.2.5.7 */
   getThinkTime() {
-    return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
+    if (g_hammer)
+      return 0;
+    else
+      return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
   }
 
   /* Clause 2.5.1 */
@@ -610,6 +625,7 @@ class PaymentProfile implements TransactionProfile {
 
     if (g_num_warehouses === 1) {
       payment.c_w_id = payment.w_id;
+      payment.c_d_id = payment.d_id;
     } else {
       var x = getRand(1, 100);
 
@@ -761,12 +777,18 @@ class DeliveryProfile implements TransactionProfile {
   }
 
   getKeyingTime() {
-    return 2000;  /* Clause 5.2.5.7 */
+    if (g_hammer)
+      return 0;
+    else
+      return 2000;  /* Clause 5.2.5.7 */
   }
 
   meanThinkTime: number = 5;  /* Clause 5.2.5.7 */
   getThinkTime() {
-    return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
+    if (g_hammer)
+      return 0;
+    else
+      return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
   }
 
   prepareInput() {
@@ -788,7 +810,7 @@ class DeliveryProfile implements TransactionProfile {
 
       self.details.ended_at = new Date();
       self.stage = 'Delivery complete';
-      self.details.n_delivered_orders = delivery.delivered_orders.length;
+      self.details.n_delivered_orders = (delivery.delivered_orders === null ? 0 : delivery.delivered_orders.length);
       self.details.output = delivery;
 
       self.delivery = delivery;
@@ -845,7 +867,10 @@ class OrderStatusProfile implements TransactionProfile {
   }
 
   getKeyingTime() {
-    return 2000;  /* Clause 5.2.5.7 */
+    if (g_hammer)
+      return 0;
+    else
+      return 2000;  /* Clause 5.2.5.7 */
   }
 
   meanThinkTime: number = 10;  /* Clause 5.2.5.7 */
@@ -869,35 +894,75 @@ class OrderStatusProfile implements TransactionProfile {
       order_status.c_last    = '';
     }
 
+    order_status.c_middle       = '';
+    order_status.c_first        = '';
+    order_status.c_balance      = 0;
+    order_status.o_id           = 0;
+    order_status.o_entry_d      = new Date(0);
+    order_status.o_carrier_id   = 0;
+
+    var i: number;
+    for (i = 0; i < 15; ++i) {
+      order_status.order_lines[i].ol_i_id			    = -1;
+      order_status.order_lines[i].ol_supply_w_id  = 0;
+      order_status.order_lines[i].ol_quantity		  = 0;
+      order_status.order_lines[i].ol_amount		    = 0;
+      order_status.order_lines[i].ol_delivery_d	  = new Date(0);
+    }
   }
 
   execute(){
 
     var self = this;
 
-    /* Do-nothing transaction */
-
-    /* Simulate a transaction that takes 1 second */
-    setTimeout(function(){
-      self.receiveTransactionResponse();
-      }, nullDBResponseTime);
-  }
-
-  receiveTransactionResponse(){
-
-    var self = this;
-
-    ++xact_counts['Order Status'];
-
     self.term.refreshDisplay();
 
-    setTimeout(function(){
-        self.term.showMenu();
-      }, self.getThinkTime() - menuThinkTime);  /* See note above call of Terminal.chooseTransaction() */
+    self.term.db.doOrderStatusTransaction(self.order_status, function(status: string, order_status: OrderStatus) {
+
+      /* TODO: Make use of the 'status' string */
+      self.order_status = order_status;
+
+      ++xact_counts['Order Status'];
+
+      self.term.refreshDisplay();
+
+      setTimeout(function(){
+          self.term.showMenu();
+        }, self.getThinkTime() - menuThinkTime);  /* See note above call of Terminal.chooseTransaction() */
+      }
+    );
   }
 
   getScreen(): string {
-      return orderStatusScreen.replace('Status:  ', 'Status: ' );
+    var i: number;
+    var os: OrderStatus = this.order_status;
+
+    var out:string = orderStatusScreen
+                      .replace('Warehouse:       '        , printf('Warehouse: %6d'      , os.w_id))
+                      .replace('Customer:     '           , printf('Customer: %4d'       , os.c_id))
+                      .replace('Order Number:         '   , printf('Order Number: %-8d'   , os.o_id))
+                      .replace('District:   '             , printf('District: %2d'       , os.d_id))
+                      .replace('Name:                                     '   , printf('Name: %-16s %2s %-16s'         , os.c_first, os.c_middle, os.c_last))
+                      .replace('Balance:              '   , printf('Balance: %-13.2f'        , os.c_balance))
+                      .replace('Carrier:   '              , printf('Carrier: %2d'        , os.o_carrier_id === null ? 0 : os.o_carrier_id))
+                      .replace('Order Date:           '   , printf('Order Date: %-10s'   , os.o_entry_d.getTime() === (new Date(0)).getTime() ? '' : os.o_entry_d.getFullYear() + '/' + (os.o_entry_d.getMonth()+1) + '/' + os.o_entry_d.getDate()))
+                      ;
+
+    for (i = 0; i < 15; ++i) {
+      var ol_dd = os.order_lines[i].ol_delivery_d;
+
+      out = out.replace(' ' + (i+11).toString() + '                                                                             ',
+                         os.order_lines[i].ol_i_id === -1
+                         ? '                                                                                '
+                         : printf(' %6d %7d %3d %7.2f %12s                                        ',
+                                os.order_lines[i].ol_supply_w_id,
+                                os.order_lines[i].ol_i_id,
+                                os.order_lines[i].ol_quantity,
+                                os.order_lines[i].ol_amount,
+                                ol_dd.getTime() === (new Date(0)).getTime() ? '' : ol_dd.getFullYear() + '/' + (ol_dd.getMonth()+1) + '/' + ol_dd.getDate()));
+    }
+
+    return out;
   }
 }
 
@@ -916,12 +981,18 @@ class StockLevelProfile implements TransactionProfile {
   }
 
   getKeyingTime() {
-    return 2000;  /* Clause 5.2.5.7 */
+    if (g_hammer)
+      return 0;
+    else
+      return 2000;  /* Clause 5.2.5.7 */
   }
 
   meanThinkTime: number = 5;  /* Clause 5.2.5.7 */
   getThinkTime() {
-    return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
+    if (g_hammer)
+      return 0;
+    else
+      return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
   }
 
   prepareInput() {
@@ -1056,10 +1127,10 @@ var orderStatusScreen: string =
 /*01*/ "|--------------------------------------------------------------------------------|\n"
 /*02*/+"|                                   Order Status                                 |\n"
 /*03*/+"|Warehouse:        District:                                                     |\n"
-/*04*/+"|Customer:       Name:                                      Balance: $           |\n"
-/*05*/+"|Order Number:          Order Date:            Total:                            |\n"
+/*04*/+"|Customer:      Name:                                      Balance:              |\n"
+/*05*/+"|Order Number:          Order Date:            Carrier:                          |\n"
 /*06*/+"|                                                                                |\n"
-/*07*/+"| Supp_W Item_Id Item_Name                Qty Stock_Qty BG  Price   Amount       |\n"
+/*07*/+"| Supp_W Item_Id Qty  Amount Delivered On                                        |\n"
 /*08*/+"| 11                                                                             |\n"
 /*09*/+"| 12                                                                             |\n"
 /*10*/+"| 13                                                                             |\n"
@@ -1075,7 +1146,7 @@ var orderStatusScreen: string =
 /*20*/+"| 23                                                                             |\n"
 /*21*/+"| 24                                                                             |\n"
 /*22*/+"| 25                                                                             |\n"
-/*23*/+"| Item number is not valid                                                       |\n"
+/*23*/+"|                                                                                |\n"
 /*24*/+"|________________________________________________________________________________|\n"
 ;
 

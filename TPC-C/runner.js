@@ -70,6 +70,17 @@ var DummyDB = (function () {
             callback('Success', input);
         }
     };
+
+    /* TODO: Implement the "Dummy" OrderStatus transaction here */
+    DummyDB.prototype.doOrderStatusTransaction = function (input, callback) {
+        if (nullDBResponseTime > 0) {
+            setTimeout(function () {
+                callback('Success', input);
+            }, nullDBResponseTime);
+        } else {
+            callback('Success', input);
+        }
+    };
     return DummyDB;
 })();
 
@@ -89,6 +100,10 @@ var NullDB = (function () {
     };
 
     NullDB.prototype.doDeliveryTransaction = function (input, callback) {
+        callback('Success', input);
+    };
+
+    NullDB.prototype.doOrderStatusTransaction = function (input, callback) {
         callback('Success', input);
     };
     return NullDB;
@@ -183,7 +198,7 @@ var Postgres = (function () {
         this.connString = 'postgres://postgres:password@localhost/tpcc_15w';
         this.dummy_mode = false;
         /* Set pool size */
-        pg.defaults.poolSize = 1;
+        pg.defaults.poolSize = 395;
 
         this.logger = logger;
     }
@@ -234,8 +249,8 @@ var Postgres = (function () {
             * because in the ad-hoc runs I did not see a measurable difference in query
             * run times.
             */
-            var query = self.dummy_mode ? 'SELECT $1::int AS number' : 'select to_json(process_new_order($1::new_order_param)) as output';
-            var bind_values = self.dummy_mode ? ['1'] : [serialized_new_order];
+            var query = self.dummy_mode ? 'SELECT $1::text AS "New Order"' : 'select to_json(process_new_order($1::new_order_param)) as output';
+            var bind_values = self.dummy_mode ? ['New Order'] : [serialized_new_order];
 
             client.query({ name: 'New Order', text: query, values: bind_values }, function (err, result) {
                 // Release the client back to the pool
@@ -318,8 +333,8 @@ var Postgres = (function () {
 
             var serialized_payment = '(' + input.w_id + ',' + input.d_id + ',' + input.c_w_id + ',' + input.c_d_id + ',' + input.c_id + ',' + input.c_last + ',' + input.h_amount + ',,,,,,,,,,,,,,,,,,,,,,,,,,,)';
 
-            var query = self.dummy_mode ? 'SELECT $1::int AS number' : 'select to_json(process_payment($1::payment_param)) as output';
-            var bind_values = self.dummy_mode ? ['1'] : [serialized_payment];
+            var query = self.dummy_mode ? 'SELECT $1::text AS "Payment"' : 'select to_json(process_payment($1::payment_param)) as output';
+            var bind_values = self.dummy_mode ? ['Payment'] : [serialized_payment];
 
             client.query({ name: 'Payment', text: query, values: bind_values }, function (err, result) {
                 // Release the client back to the pool
@@ -391,8 +406,8 @@ var Postgres = (function () {
 
             var serialized_delivery = '(' + input.w_id + ',' + input.carrier_id + ',)';
 
-            var query = self.dummy_mode ? 'SELECT $1::int AS number' : 'select to_json(process_delivery($1::delivery_param)) as output';
-            var bind_values = self.dummy_mode ? ['1'] : [serialized_delivery];
+            var query = self.dummy_mode ? 'SELECT $1::text AS "Delivery"' : 'select to_json(process_delivery($1::delivery_param)) as output';
+            var bind_values = self.dummy_mode ? ['Delivery'] : [serialized_delivery];
 
             client.query({ name: 'Delivery', text: query, values: bind_values }, function (err, result) {
                 // Release the client back to the pool
@@ -417,6 +432,67 @@ var Postgres = (function () {
             });
         });
     };
+
+    Postgres.prototype.doOrderStatusTransaction = function (input, callback) {
+        var self = this;
+
+        /* Get a pooled connection */
+        pg.connect(self.connString, function (err, client, done) {
+            if (err) {
+                self.logger.log('error', 'error fetching client from pool: ' + JSON.stringify(err));
+                return;
+            }
+
+            var serialized_order_status = '(' + input.w_id + ',' + input.d_id + ',' + input.c_id + ',' + input.c_last + ',,,,,,,)';
+
+            var query = self.dummy_mode ? 'SELECT $1::text AS "Order Status"' : 'select to_json(process_order_status($1::order_status_param)) as output';
+            var bind_values = self.dummy_mode ? ['Order Status'] : [serialized_order_status];
+
+            client.query({ name: 'Order Status', text: query, values: bind_values }, function (err, result) {
+                // Release the client back to the pool
+                done();
+
+                if (err) {
+                    /* TODO: In case of 'Serialization' error, retry the transaction. */
+                    callback('Error: ' + JSON.stringify(err), input);
+                    return;
+                }
+
+                if (self.dummy_mode) {
+                    callback('Success', input);
+                    return;
+                }
+
+                var output = result.rows[0].output;
+
+                input.c_id = output.c_id;
+                input.c_last = output.c_last;
+                input.c_middle = output.c_middle;
+                input.c_first = output.c_first;
+                input.c_balance = output.c_balance;
+                input.o_id = output.o_id;
+                input.o_entry_d = new Date(Date.parse(output.o_entry_d));
+                input.o_carrier_id = output.o_carrier_id;
+
+                var i;
+                for (i = 0; i < 15; ++i) {
+                    if (!output.order_lines || !output.order_lines[i] || output.order_lines[i].ol_i_id === -1) {
+                        break;
+                    }
+
+                    var ol_dd = output.order_lines[i].ol_delivery_d;
+
+                    input.order_lines[i].ol_i_id = output.order_lines[i].ol_i_id;
+                    input.order_lines[i].ol_supply_w_id = output.order_lines[i].ol_supply_w_id;
+                    input.order_lines[i].ol_quantity = output.order_lines[i].ol_quantity;
+                    input.order_lines[i].ol_amount = output.order_lines[i].ol_amount;
+                    input.order_lines[i].ol_delivery_d = ol_dd === null ? new Date(0) : new Date(Date.parse(ol_dd));
+                }
+
+                callback('Success', input);
+            });
+        });
+    };
     return Postgres;
 })();
 
@@ -432,6 +508,7 @@ var printf = require('printf');
 
 var g_num_warehouses = 0;
 var g_terminals = [];
+var g_sleepless = false;
 var nullDBResponseTime = 0 * 1000;
 
 /* Return an integer in the inclusive range [min, max] */
@@ -543,7 +620,7 @@ var TPCCStats = (function () {
     return TPCCStats;
 })();
 
-var menuThinkTime = 1000;
+var menuThinkTime = g_sleepless ? 0 : 1000;
 
 var Terminal = (function () {
     /*
@@ -587,10 +664,12 @@ var Terminal = (function () {
         * (a) reduce CPU consumption/increase generated load, or (b) to comply with
         * specification's word, upon insistence by the auditor.
         */
-        setTimeout(function () {
+        if (g_sleepless || menuThinkTime === 0)
             self.chooseTransaction();
-        }, menuThinkTime);
-        //self.chooseTransaction();
+        else
+            setTimeout(function () {
+                self.chooseTransaction();
+            }, menuThinkTime);
     };
 
     Terminal.prototype.chooseTransaction = function () {
@@ -675,11 +754,17 @@ var NewOrderProfile = (function () {
         this.status = '';
     }
     NewOrderProfile.prototype.getKeyingTime = function () {
-        return 18000;
+        if (g_sleepless)
+            return 0;
+        else
+            return 18000;
     };
 
     NewOrderProfile.prototype.getThinkTime = function () {
-        return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
+        if (g_sleepless)
+            return 0;
+        else
+            return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
     };
 
     NewOrderProfile.prototype.prepareInput = function () {
@@ -869,11 +954,17 @@ var PaymentProfile = (function () {
         this.payment.w_zip = '';
     }
     PaymentProfile.prototype.getKeyingTime = function () {
-        return 3000;
+        if (g_sleepless)
+            return 0;
+        else
+            return 3000;
     };
 
     PaymentProfile.prototype.getThinkTime = function () {
-        return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
+        if (g_sleepless)
+            return 0;
+        else
+            return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
     };
 
     /* Clause 2.5.1 */
@@ -885,6 +976,7 @@ var PaymentProfile = (function () {
 
         if (g_num_warehouses === 1) {
             payment.c_w_id = payment.w_id;
+            payment.c_d_id = payment.d_id;
         } else {
             var x = getRand(1, 100);
 
@@ -995,11 +1087,17 @@ var DeliveryProfile = (function () {
         this.delivery.w_id = this.term.w_id;
     }
     DeliveryProfile.prototype.getKeyingTime = function () {
-        return 2000;
+        if (g_sleepless)
+            return 0;
+        else
+            return 2000;
     };
 
     DeliveryProfile.prototype.getThinkTime = function () {
-        return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
+        if (g_sleepless)
+            return 0;
+        else
+            return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
     };
 
     DeliveryProfile.prototype.prepareInput = function () {
@@ -1017,7 +1115,7 @@ var DeliveryProfile = (function () {
         self.term.db.doDeliveryTransaction(self.delivery, function (status, delivery) {
             self.details.ended_at = new Date();
             self.stage = 'Delivery complete';
-            self.details.n_delivered_orders = delivery.delivered_orders.length;
+            self.details.n_delivered_orders = delivery.delivered_orders !== null ? delivery.delivered_orders.length : 0;
             self.details.output = delivery;
 
             self.delivery = delivery;
@@ -1064,7 +1162,10 @@ var OrderStatusProfile = (function () {
         this.order_status.w_id = this.term.w_id;
     }
     OrderStatusProfile.prototype.getKeyingTime = function () {
-        return 2000;
+        if (g_sleepless)
+            return 0;
+        else
+            return 2000;
     };
 
     OrderStatusProfile.prototype.getThinkTime = function () {
@@ -1085,32 +1186,56 @@ var OrderStatusProfile = (function () {
             order_status.c_id = NURand(1023, 1, 3000);
             order_status.c_last = '';
         }
+
+        order_status.c_middle = '';
+        order_status.c_first = '';
+        order_status.c_balance = 0;
+        order_status.o_id = 0;
+        order_status.o_entry_d = new Date(0);
+        order_status.o_carrier_id = 0;
+
+        var i;
+        for (i = 0; i < 15; ++i) {
+            order_status.order_lines[i].ol_i_id = -1;
+            order_status.order_lines[i].ol_supply_w_id = 0;
+            order_status.order_lines[i].ol_quantity = 0;
+            order_status.order_lines[i].ol_amount = 0;
+            order_status.order_lines[i].ol_delivery_d = new Date(0);
+        }
     };
 
     OrderStatusProfile.prototype.execute = function () {
         var self = this;
 
-        /* Do-nothing transaction */
-        /* Simulate a transaction that takes 1 second */
-        setTimeout(function () {
-            self.receiveTransactionResponse();
-        }, nullDBResponseTime);
-    };
-
-    OrderStatusProfile.prototype.receiveTransactionResponse = function () {
-        var self = this;
-
-        ++xact_counts['Order Status'];
-
         self.term.refreshDisplay();
 
-        setTimeout(function () {
-            self.term.showMenu();
-        }, self.getThinkTime() - menuThinkTime); /* See note above call of Terminal.chooseTransaction() */
+        self.term.db.doOrderStatusTransaction(self.order_status, function (status, order_status) {
+            /* TODO: Make use of the 'status' string */
+            self.order_status = order_status;
+
+            ++xact_counts['Order Status'];
+
+            self.term.refreshDisplay();
+
+            setTimeout(function () {
+                self.term.showMenu();
+            }, self.getThinkTime() - menuThinkTime); /* See note above call of Terminal.chooseTransaction() */
+        });
     };
 
     OrderStatusProfile.prototype.getScreen = function () {
-        return orderStatusScreen.replace('Status:  ', 'Status: ');
+        var i;
+        var os = this.order_status;
+
+        var out = orderStatusScreen.replace('Warehouse:       ', printf('Warehouse: %6d', os.w_id)).replace('Customer:     ', printf('Customer: %4d', os.c_id)).replace('Order Number:         ', printf('Order Number: %-8d', os.o_id)).replace('District:   ', printf('District: %2d', os.d_id)).replace('Name:                                     ', printf('Name: %-16s %2s %-16s', os.c_first, os.c_middle, os.c_last)).replace('Balance:              ', printf('Balance: %-13.2f', os.c_balance)).replace('Carrier:   ', printf('Carrier: %2d', os.o_carrier_id === null ? 0 : os.o_carrier_id)).replace('Order Date:           ', printf('Order Date: %-10s', os.o_entry_d.getTime() === (new Date(0)).getTime() ? '' : os.o_entry_d.getFullYear() + '/' + (os.o_entry_d.getMonth() + 1) + '/' + os.o_entry_d.getDate()));
+
+        for (i = 0; i < 15; ++i) {
+            var ol_dd = os.order_lines[i].ol_delivery_d;
+
+            out = out.replace(' ' + (i + 11).toString() + '                                                                             ', os.order_lines[i].ol_i_id === -1 ? '                                                                                ' : printf(' %6d %7d %3d %7.2f %12s                                        ', os.order_lines[i].ol_supply_w_id, os.order_lines[i].ol_i_id, os.order_lines[i].ol_quantity, os.order_lines[i].ol_amount, ol_dd.getTime() === (new Date(0)).getTime() ? '' : ol_dd.getFullYear() + '/' + (ol_dd.getMonth() + 1) + '/' + ol_dd.getDate()));
+        }
+
+        return out;
     };
     return OrderStatusProfile;
 })();
@@ -1126,11 +1251,17 @@ var StockLevelProfile = (function () {
         this.term = term;
     }
     StockLevelProfile.prototype.getKeyingTime = function () {
-        return 2000;
+        if (g_sleepless)
+            return 0;
+        else
+            return 2000;
     };
 
     StockLevelProfile.prototype.getThinkTime = function () {
-        return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
+        if (g_sleepless)
+            return 0;
+        else
+            return 1000 * Math.min(this.meanThinkTime * 10, -1 * Math.log(Math.random()) * this.meanThinkTime);
     };
 
     StockLevelProfile.prototype.prepareInput = function () {
@@ -1178,7 +1309,7 @@ var newOrderScreen = "|---------------------------------------------------------
 
 var paymentScreen = "|--------------------------------------------------------------------------------|\n" + "|                                     Payment                                    |\n" + "|Date:                                                                           |\n" + "|                                                                                |\n" + "|Warehouse:                               District:                              |\n" + "|W_STREET_1                               D_STREET_1                             |\n" + "|W_STREET_2                               D_STREET_2                             |\n" + "|W_CITY                                   D_CITY                                 |\n" + "|                                                                                |\n" + "|Customer:      Cust-Warehouse:        Cust-District:    Cust-Discount:          |\n" + "|Name:                                                                           |\n" + "|      C_STREET_1                         Cust-Phone:                            |\n" + "|      C_STREET_2                         Cust-Since:                            |\n" + "|      C_CITY                             Cust-Credit:                           |\n" + "|                                                                                |\n" + "|Amount Paid:          New Cust-Balance:                                         |\n" + "|Credit Limit:                                                                   |\n" + "|                                                                                |\n" + "|Cust-Data: CUST-DATA1                                                           |\n" + "|           CUST-DATA2                                                           |\n" + "|           CUST-DATA3                                                           |\n" + "|           CUST-DATA4                                                           |\n" + "|                                                                                |\n" + "|________________________________________________________________________________|\n";
 
-var orderStatusScreen = "|--------------------------------------------------------------------------------|\n" + "|                                   Order Status                                 |\n" + "|Warehouse:        District:                                                     |\n" + "|Customer:       Name:                                      Balance: $           |\n" + "|Order Number:          Order Date:            Total:                            |\n" + "|                                                                                |\n" + "| Supp_W Item_Id Item_Name                Qty Stock_Qty BG  Price   Amount       |\n" + "| 11                                                                             |\n" + "| 12                                                                             |\n" + "| 13                                                                             |\n" + "| 14                                                                             |\n" + "| 15                                                                             |\n" + "| 16                                                                             |\n" + "| 17                                                                             |\n" + "| 18                                                                             |\n" + "| 19                                                                             |\n" + "| 20                                                                             |\n" + "| 21                                                                             |\n" + "| 22                                                                             |\n" + "| 23                                                                             |\n" + "| 24                                                                             |\n" + "| 25                                                                             |\n" + "| Item number is not valid                                                       |\n" + "|________________________________________________________________________________|\n";
+var orderStatusScreen = "|--------------------------------------------------------------------------------|\n" + "|                                   Order Status                                 |\n" + "|Warehouse:        District:                                                     |\n" + "|Customer:      Name:                                      Balance:              |\n" + "|Order Number:          Order Date:            Carrier:                          |\n" + "|                                                                                |\n" + "| Supp_W Item_Id Qty  Amount Delivered On                                        |\n" + "| 11                                                                             |\n" + "| 12                                                                             |\n" + "| 13                                                                             |\n" + "| 14                                                                             |\n" + "| 15                                                                             |\n" + "| 16                                                                             |\n" + "| 17                                                                             |\n" + "| 18                                                                             |\n" + "| 19                                                                             |\n" + "| 20                                                                             |\n" + "| 21                                                                             |\n" + "| 22                                                                             |\n" + "| 23                                                                             |\n" + "| 24                                                                             |\n" + "| 25                                                                             |\n" + "|                                                                                |\n" + "|________________________________________________________________________________|\n";
 
 var deliveryScreen = "|--------------------------------------------------------------------------------|\n" + "|                                     Delivery                                   |\n" + "| Warehouse:                                                                     |\n" + "|                                                                                |\n" + "| Carrier Number:                                                                |\n" + "|                                                                                |\n" + "| Execution Status:                                                              |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|                                                                                |\n" + "|________________________________________________________________________________|\n";
 
@@ -1294,6 +1425,17 @@ function decrease_warehouse_count(count) {
 
 increase_warehouse_count(15);
 
+/*
+*  With PostgresDummy DB, at 15000 warehouses, using 4 CPUs we get no NewOrder
+* transactions until about 3 minutes!! This seems to be because of the backlog
+* of Payment transactions that builds up within the first 18-or-so seconds, and
+* for the first 3 minutes the database sees a barrage of Payment transactions.
+* By the time that barrage ends, the backlog of NewOrder transactions builds up
+* and then the database sees only NewOrder transactions for a while.
+*
+* NullDB doesn't exhibit this behaviour, apparently because the backlog never
+* builds up.
+*/
 /* IIFE to display transaction stats, and to prevent polluting global scope. */
 (function () {
     var stats = new TPCCStats();
