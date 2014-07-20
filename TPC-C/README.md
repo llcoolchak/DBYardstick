@@ -39,6 +39,7 @@ $ git clone git@github.com:gurjeet/tpc.js
 
 ```
 
+
 Compile and Run
 ---------------
 
@@ -51,6 +52,8 @@ In the `TPC-C` directory:
 - Use `make watch` to launch the compiler in 'watch' mode, where it watches
 source files for changes and automatically compiles them as you save the source
 files.
+
+ TPCC='{"active_warehouses":11, "stats_interval":3, "database":"Postgres", "postgres_connection_pool_count": 4}'
 
 Notes
 =====
