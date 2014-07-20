@@ -8,20 +8,33 @@
 -- Stop script processing on an ERROR
 \set ON_ERROR_STOP 1
 
--- Do NOT drop objects. Require the user to drop them explicitly.
+-- Do NOT drop objects automatically. Require the user to drop them explicitly.
 -- \include_relative tpcc_ddl_drop_pgsql.sql
 
 -- Create the objects.
 \include_relative tpcc_ddl_pgsql.sql
 
 select load_item();
-select add_warehouses(1, 1);
-select data_load_sanity_tests();
-select consistency_checks();
+
+/*
+ * W_ID=0 is NOT used by the application. This is being populated to act as
+ * source of clones later.
+ */
+select add_warehouses(0, 1);
+
+/* Create clone warehouses */
+select clone_warehouse(0, s) from generate_series(1, 10) as s;
+
+/* Vacuum Analyze the database to update statistics */
 vacuum analyze;
+
+/* Perform sanity tests */
+select data_load_sanity_tests();
+
+/* Perform consistency checks */
+select consistency_checks();
 
 /*
  * TODO: Create a post-loading script which would be responsible for constraint
  * creation and vacuuming etc. so that data loading would finish faster.
- *
  */
