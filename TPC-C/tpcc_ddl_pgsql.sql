@@ -27,22 +27,6 @@
  * accordingly.
  */
 
-create user tpcc;
-
-alter user tpcc set search_path = tpcc;
-
-alter user tpcc set default_transaction_isolation = 'repeatable read';
-
-create database tpcc owner tpcc;
-
-\connect tpcc
-
-create schema tpcc authorization tpcc;
-
-\connect tpcc tpcc
-
-begin transaction;
-
 create table WAREHOUSE (
 	W_ID		integer,
 	W_NAME		varchar(10),
@@ -1506,5 +1490,3 @@ begin
 	return;
 end;
 $$ language plpgsql;
-
-commit transaction;

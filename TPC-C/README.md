@@ -36,6 +36,9 @@ $ sudo apt-get install git make
 $ git clone git@github.com:gurjeet/tpc.js
 
 # Install package dependencies
+$ npm install
+
+# Connect to Postgres, install TPC-C schema and populate initial data.
 
 ```
 
@@ -53,7 +56,7 @@ In the `TPC-C` directory:
 source files for changes and automatically compiles them as you save the source
 files.
 
- TPCC='{"active_warehouses":11, "stats_interval":3, "database":"Postgres", "postgres_connection_pool_count": 4}'
+TPCC='{"active_warehouses":11, "stats_interval":3, "database":"Postgres", "postgres_connection_pool_count": 4}'
 
 Notes
 =====

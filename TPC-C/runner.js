@@ -31,7 +31,7 @@ var uvp_database = 'PostgresDummy';
 var uvp_postgres_connection_pool_count = 3;
 
 /* Postgres connection string */
-var uvp_postgres_connection_string = 'postgres://tpcc2:password@localhost/tpcc';
+var uvp_postgres_connection_string = 'postgres://tpcc:password@localhost/tpcc';
 
 /*
 * TODO: The NURand() implemetation in the application requires that C-Load
