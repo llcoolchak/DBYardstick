@@ -41,7 +41,7 @@ select load_item();
 select add_warehouses(0, 1);
 
 /* Create clone warehouses */
-/qecho -- Cloning warehouses from warehouse-0
+\qecho -- Cloning warehouses from warehouse-0
 select clone_warehouse(0, s) from generate_series(1, 2) as s;
 
 /* Vacuum Analyze the database to update statistics */
