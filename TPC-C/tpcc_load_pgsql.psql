@@ -25,7 +25,7 @@ begin transaction;
 
 \include_relative tpcc_ddl_pgsql.sql
 
-comit;
+commit;
 
 -- Populate ITEMS table
 select load_item();
