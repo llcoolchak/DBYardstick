@@ -109,7 +109,7 @@ function increase_warehouse_count(count: number) {
 
     for (j = 0; j < 10; ++j) {
                                           /* Warehouse IDs are 1 based */
-      g_terminals[i*10 + j] = new Terminal(i+1, j+1, eval('new ' + uvp_database + '(g_logger)'), (i === 0 && j === 0) ? mainBox : null, g_logger);
+      g_terminals[i*10 + j] = new Terminal(i+1, j+1, eval('new ' + uvp_database_type + '(g_logger)'), (i === 0 && j === 0) ? mainBox : null, g_logger);
     }
   }
 

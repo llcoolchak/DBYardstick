@@ -13,19 +13,22 @@
 
 \qecho Creating TPCC user and database
 create user tpcc;
-alter user tpcc set search_path = tpcc;
-alter user tpcc set default_transaction_isolation = 'repeatable read';
-create database tpcc owner tpcc;
-
-\connect tpcc tpcc
 
 create schema tpcc authorization tpcc;
+
+alter user tpcc set search_path = tpcc;
+alter user tpcc set default_transaction_isolation = 'repeatable read';
+
+set search_path = tpcc;
 
 -- Create the objects in a transaction
 \qecho Creating TPCC schema in TPCC database
 begin transaction;
 
 \include_relative tpcc_ddl_pgsql.sql
+
+grant all privileges on all tables in schema tpcc to tpcc;
+grant all privileges on all functions in schema tpcc to tpcc;
 
 commit;
 
@@ -41,7 +44,7 @@ select load_item();
 select add_warehouses(0, 1);
 
 /* Create clone warehouses */
-\qecho -- Cloning warehouses from warehouse-0
+\qecho Cloning warehouses from warehouse-0
 select clone_warehouse(0, s) from generate_series(1, 2) as s;
 
 /* Vacuum Analyze the database to update statistics */

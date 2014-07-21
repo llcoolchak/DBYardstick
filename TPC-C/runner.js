@@ -20,7 +20,7 @@ var uvp_log_file = '/tmp/tpcc.' + process.pid + '.log';
 var uvp_stats_interval = 1;
 
 /* Database to test */
-var uvp_database = 'PostgresDummy';
+var uvp_database_type = 'NullDB';
 
 /*
 * As a convention, sub-module specific UVPs should use variable names of the
@@ -104,13 +104,13 @@ if (typeof process.env.TPCC !== "undefined") {
         */
     }
 
-    if (typeof config.database !== "undefined") {
-        uvp_database = config.database;
+    if (typeof config.database_type !== "undefined") {
+        uvp_database_type = config.database_type;
 
-        if (uvp_database === "Postgres" || uvp_database === "NullDB" || uvp_database === "PostgresDummy") {
+        if (uvp_database_type === "Postgres" || uvp_database_type === "NullDB" || uvp_database_type === "PostgresDummy") {
             ;
         } else {
-            console.log('Unknown database: ' + uvp_database + '. Supported databases are: NullDB, Postgres, PostgresDummy.');
+            console.log('Unknown database: ' + uvp_database_type + '. Supported databases are: NullDB, Postgres, PostgresDummy.');
             process.exit(1);
         }
     }
@@ -1598,7 +1598,7 @@ function increase_warehouse_count(count) {
     for (i = g_num_warehouses; i < (g_num_warehouses + count); ++i) {
         for (j = 0; j < 10; ++j) {
             /* Warehouse IDs are 1 based */
-            g_terminals[i * 10 + j] = new Terminal(i + 1, j + 1, eval('new ' + uvp_database + '(g_logger)'), (i === 0 && j === 0) ? mainBox : null, g_logger);
+            g_terminals[i * 10 + j] = new Terminal(i + 1, j + 1, eval('new ' + uvp_database_type + '(g_logger)'), (i === 0 && j === 0) ? mainBox : null, g_logger);
         }
     }
 

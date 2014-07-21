@@ -13,7 +13,7 @@ Prerequisites
 Install Prerequisites
 ---------------------
 
-Adapt these instructions for your platform:
+Adapt these instructions for your platform and environment.
 
 ```bash
 
@@ -32,31 +32,53 @@ $ npm install -g typescript
 # Install development dependencies
 $ sudo apt-get install git make
 
+# Install Postrges;
+$ sudo apt-get install postgresql
+
+# Above command also starts the database, else make sure you start it
+$ sudo service postgresql start
+
+```
+
+Clone the project and populate initial data.
+
+
+```bash
+
 # Clone this repository, and switch to that directory
 $ git clone git@github.com:gurjeet/tpc.js
+$ cd tpc.js
 
 # Install package dependencies
 $ npm install
 
-# Connect to Postgres, install TPC-C schema and populate initial data.
+# Connect to Postgres, create TPC-C user, schema and populate initial data.
+$ psql -U postgres -d postgres -f TPC-C/tpcc_load_pgsql.psql
 
 ```
 
+Now you can execute a benchmark run after specifying a configuration in environment
+varible `TPCC`.
+
+```bash
+export TPCC='{"active_warehouses":2, "database_type":"Postgres", "postgres_connection_pool_count": 4, "postgres_connection_string":"postgres://tpcc:password@localhost/postgres"}'
+
+make -C TPC-C run
+
+```
 
 Compile and Run
 ---------------
 
 In the `TPC-C` directory:
 
-- Use `make` to compile the source code.
+- Use `make -C TPC-C` to compile the source code.
 
-- Use `make run` to execute the TPC-C tests, and compile the code if necessary.
+- Use `make -C TPC-C run` to execute the TPC-C tests, and compile the code if necessary.
 
-- Use `make watch` to launch the compiler in 'watch' mode, where it watches
+- Use `make -C TPC-C watch` to launch the compiler in 'watch' mode, where it watches
 source files for changes and automatically compiles them as you save the source
 files.
-
-TPCC='{"active_warehouses":11, "stats_interval":3, "database":"Postgres", "postgres_connection_pool_count": 4}'
 
 Notes
 =====
